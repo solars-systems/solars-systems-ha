@@ -6,7 +6,7 @@
 
 Integrarea oficială Home Assistant pentru platforma [Solars Systems](https://solars-systems.eu).
 
-Această componentă permite proprietarilor de sisteme fotovoltaice (Deye, Huawei, Growatt, Victron, Fronius, Sungrow, etc.) care folosesc Home Assistant să transmită telemetria live și să importe istoricul complet de producție direct în platforma **Solars Systems**, chiar și fără modulul hardware dedicat ESP32.
+Această componentă permite proprietarilor de sisteme fotovoltaice (Deye, Huawei, Growatt, Victron, Fronius, Sungrow etc.) care utilizează Home Assistant să transmită telemetria live și să sincronizeze istoricul complet de producție direct în platforma **Solars Systems**.
 
 ---
 
