@@ -19,6 +19,10 @@ from .const import (
     CONF_INVERTER_ID,
     CONF_UPDATE_INTERVAL,
     CONF_SENSOR_PV_POWER,
+    CONF_SENSOR_PV1_VOLT,
+    CONF_SENSOR_PV2_VOLT,
+    CONF_SENSOR_PV1_POWER,
+    CONF_SENSOR_PV2_POWER,
     CONF_SENSOR_LOAD_POWER,
     CONF_SENSOR_BATT_SOC,
     CONF_SENSOR_BATT_VOLT,
@@ -37,7 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _auto_detect_sensors(hass) -> dict[str, str]:
-    """Auto-detect candidate sensors for solar, load, battery and grid."""
+    """Auto-detect candidate sensors for solar, MPPTs, load, battery and grid."""
     detected: dict[str, str] = {}
     all_states = hass.states.async_all()
 
@@ -50,13 +54,31 @@ def _auto_detect_sensors(hass) -> dict[str, str]:
         device_class = state.attributes.get("device_class")
         unit = state.attributes.get("unit_of_measurement")
 
-        # 1. Solar / PV Power (W / kW)
+        # 1. Total Solar / PV Power (W / kW)
         if CONF_SENSOR_PV_POWER not in detected and (device_class == "power" or unit in ("W", "kW")):
-            if any(k in name for k in ("pv_power", "solar_power", "pv power", "solar power", "mppt_power")) or (
+            if any(k in name for k in ("pv_power", "solar_power", "pv power", "solar power", "total_pv_power", "total pv power")) or (
                 any(k in name for k in ("pv", "solar", "panou", "panouri"))
-                and not any(neg in name for neg in ("load", "consum", "grid", "retea", "house", "energy", "zi", "daily"))
+                and not any(neg in name for neg in ("pv1", "pv2", "mppt", "load", "consum", "grid", "retea", "house", "energy", "zi", "daily"))
             ):
                 detected[CONF_SENSOR_PV_POWER] = entity_id
+
+        # 1.1 MPPT 1 Voltage & Power
+        if CONF_SENSOR_PV1_VOLT not in detected and (device_class == "voltage" or unit == "V"):
+            if any(k in name for k in ("pv1_voltage", "pv1_volt", "mppt1_voltage", "mppt1_volt", "pv1 voltage", "mppt 1 voltage", "pv 1 voltage")):
+                detected[CONF_SENSOR_PV1_VOLT] = entity_id
+
+        if CONF_SENSOR_PV1_POWER not in detected and (device_class == "power" or unit in ("W", "kW")):
+            if any(k in name for k in ("pv1_power", "mppt1_power", "pv1 power", "mppt 1 power", "pv 1 power")):
+                detected[CONF_SENSOR_PV1_POWER] = entity_id
+
+        # 1.2 MPPT 2 Voltage & Power
+        if CONF_SENSOR_PV2_VOLT not in detected and (device_class == "voltage" or unit == "V"):
+            if any(k in name for k in ("pv2_voltage", "pv2_volt", "mppt2_voltage", "mppt2_volt", "pv2 voltage", "mppt 2 voltage", "pv 2 voltage")):
+                detected[CONF_SENSOR_PV2_VOLT] = entity_id
+
+        if CONF_SENSOR_PV2_POWER not in detected and (device_class == "power" or unit in ("W", "kW")):
+            if any(k in name for k in ("pv2_power", "mppt2_power", "pv2 power", "mppt 2 power", "pv 2 power")):
+                detected[CONF_SENSOR_PV2_POWER] = entity_id
 
         # 2. Load / House Power (W / kW)
         if CONF_SENSOR_LOAD_POWER not in detected and (device_class == "power" or unit in ("W", "kW")):
@@ -168,7 +190,6 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Combine API key with sensor settings
             data = {
                 CONF_API_KEY: self._api_key,
                 **user_input,
@@ -196,6 +217,34 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(
                 CONF_SENSOR_PV_POWER,
                 **({"default": detected[CONF_SENSOR_PV_POWER]} if CONF_SENSOR_PV_POWER in detected else {})
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            ),
+
+            vol.Optional(
+                CONF_SENSOR_PV1_VOLT,
+                **({"default": detected[CONF_SENSOR_PV1_VOLT]} if CONF_SENSOR_PV1_VOLT in detected else {})
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+            ),
+
+            vol.Optional(
+                CONF_SENSOR_PV1_POWER,
+                **({"default": detected[CONF_SENSOR_PV1_POWER]} if CONF_SENSOR_PV1_POWER in detected else {})
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            ),
+
+            vol.Optional(
+                CONF_SENSOR_PV2_VOLT,
+                **({"default": detected[CONF_SENSOR_PV2_VOLT]} if CONF_SENSOR_PV2_VOLT in detected else {})
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+            ),
+
+            vol.Optional(
+                CONF_SENSOR_PV2_POWER,
+                **({"default": detected[CONF_SENSOR_PV2_POWER]} if CONF_SENSOR_PV2_POWER in detected else {})
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="power")
             ),

@@ -13,7 +13,11 @@
         "description": "Selectați invertorul țintă din contul dvs. și asociați senzorii măsurați în Home Assistant.",
         "data": {
           "inverter_id": "Invertor Solars Systems",
-          "sensor_pv_power": "Senzor Putere Panouri Fotovoltaice (W/kW)",
+          "sensor_pv_power": "Putere Totală Solară (W/kW)",
+          "sensor_pv1_volt": "Tensiune MPPT 1 (V)",
+          "sensor_pv1_power": "Putere MPPT 1 (W)",
+          "sensor_pv2_volt": "Tensiune MPPT 2 (V)",
+          "sensor_pv2_power": "Putere MPPT 2 (W)",
           "sensor_load_power": "Senzor Consum Casă (W/kW)",
           "sensor_batt_soc": "Senzor Nivel Baterie (%)",
           "sensor_energy_today": "Senzor Producție Energie (kWh)",

@@ -13,7 +13,11 @@
         "description": "Select your target inverter and map your Home Assistant sensors.",
         "data": {
           "inverter_id": "Solars Systems Inverter",
-          "sensor_pv_power": "Solar PV Power Sensor (W/kW)",
+          "sensor_pv_power": "Total Solar PV Power (W/kW)",
+          "sensor_pv1_volt": "MPPT 1 Voltage (V)",
+          "sensor_pv1_power": "MPPT 1 Power (W)",
+          "sensor_pv2_volt": "MPPT 2 Voltage (V)",
+          "sensor_pv2_power": "MPPT 2 Power (W)",
           "sensor_load_power": "Home Load Power Sensor (W/kW)",
           "sensor_batt_soc": "Battery Level Sensor (%)",
           "sensor_energy_today": "Solar Energy Sensor (kWh)",

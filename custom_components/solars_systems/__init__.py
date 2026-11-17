@@ -20,6 +20,10 @@ from .const import (
     CONF_INVERTER_ID,
     CONF_UPDATE_INTERVAL,
     CONF_SENSOR_PV_POWER,
+    CONF_SENSOR_PV1_VOLT,
+    CONF_SENSOR_PV2_VOLT,
+    CONF_SENSOR_PV1_POWER,
+    CONF_SENSOR_PV2_POWER,
     CONF_SENSOR_LOAD_POWER,
     CONF_SENSOR_BATT_SOC,
     CONF_SENSOR_BATT_VOLT,
@@ -75,7 +79,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return None
             return _safe_float(state.state)
 
+        pv1_volt = get_val(CONF_SENSOR_PV1_VOLT)
+        pv2_volt = get_val(CONF_SENSOR_PV2_VOLT)
+        pv1_pwr = get_val(CONF_SENSOR_PV1_POWER)
+        pv2_pwr = get_val(CONF_SENSOR_PV2_POWER)
+
+        if pv1_volt is not None:
+            payload["voltajPV1"] = pv1_volt
+        if pv2_volt is not None:
+            payload["voltajPV1_2"] = pv2_volt
+        if pv1_pwr is not None:
+            payload["puterePV1_1"] = pv1_pwr
+        if pv2_pwr is not None:
+            payload["puterePV1_2"] = pv2_pwr
+
         pv_power = get_val(CONF_SENSOR_PV_POWER)
+        # If user didn't specify total solar power, auto-sum MPPT1 + MPPT2
+        if pv_power is None and (pv1_pwr is not None or pv2_pwr is not None):
+            pv_power = (pv1_pwr or 0.0) + (pv2_pwr or 0.0)
+        if pv_power is not None:
+            payload["puterePV"] = pv_power
+
         load_power = get_val(CONF_SENSOR_LOAD_POWER)
         batt_soc = get_val(CONF_SENSOR_BATT_SOC)
         batt_volt = get_val(CONF_SENSOR_BATT_VOLT)
@@ -83,8 +107,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         grid_volt = get_val(CONF_SENSOR_GRID_VOLT)
         energy_today = get_val(CONF_SENSOR_ENERGY_TODAY)
 
-        if pv_power is not None:
-            payload["puterePV"] = pv_power
         if load_power is not None:
             payload["putereConsum"] = load_power
         if batt_soc is not None:
@@ -130,7 +152,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         elif range_choice == HISTORY_RANGE_1_YEAR:
             start_dt = now_dt - timedelta(days=365)
         else:
-            # All available (last 5 years)
             start_dt = now_dt - timedelta(days=1825)
 
         _LOGGER.info("Starting historical import for %s starting from %s", energy_entity, start_dt.date())
@@ -155,13 +176,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entity_stats = stats.get(energy_entity, [])
 
             for s in entity_stats:
-                # Format start timestamp as DD-MM-YYYY
                 start_ts = s.get("start")
                 if not start_ts:
                     continue
                 dt_record = dt_util.as_local(dt_util.utc_from_timestamp(start_ts))
 
-                # Energy value for that day
                 kwh = s.get("change")
                 if kwh is None or kwh <= 0:
                     kwh = s.get("state")
@@ -182,7 +201,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
             _LOGGER.info("Found %d historical days. Sending to Solars Systems in batches...", len(records))
 
-            # Send in batches of 100 days
             batch_size = 100
             total_inserted = 0
             total_updated = 0
@@ -208,7 +226,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     else:
                         _LOGGER.error("Failed batch import (status %s): %s", resp.status, await resp.text())
 
-            # Notify user in Home Assistant UI
             msg = (
                 f"✅ **Import istoric finalizat cu succes!**\n\n"
                 f"* **{total_inserted}** zile noi adăugate în Solars Systems\n"
@@ -225,7 +242,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception as err:
             _LOGGER.exception("Error during historical import: %s", err)
 
-    # Schedule recurring telemetry
     cancel_timer = async_track_time_interval(
         hass, async_send_telemetry, timedelta(seconds=update_interval)
     )
@@ -235,10 +251,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "cancel_timer": cancel_timer,
     }
 
-    # Run immediate initial telemetry
     hass.async_create_task(async_send_telemetry())
 
-    # Run history import in background if enabled
     if data.get(CONF_IMPORT_HISTORY, True):
         hass.async_create_task(async_run_history_import())
 
