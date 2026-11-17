@@ -36,6 +36,77 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def _auto_detect_sensors(hass) -> dict[str, str]:
+    """Auto-detect candidate sensors for solar, load, battery and grid."""
+    detected: dict[str, str] = {}
+    all_states = hass.states.async_all()
+
+    for state in all_states:
+        entity_id = state.entity_id
+        if not entity_id.startswith("sensor."):
+            continue
+
+        name = f"{entity_id} {state.attributes.get('friendly_name', '')}".lower()
+        device_class = state.attributes.get("device_class")
+        unit = state.attributes.get("unit_of_measurement")
+
+        # 1. Solar / PV Power (W / kW)
+        if CONF_SENSOR_PV_POWER not in detected and (device_class == "power" or unit in ("W", "kW")):
+            if any(k in name for k in ("pv_power", "solar_power", "pv power", "solar power", "mppt_power")) or (
+                any(k in name for k in ("pv", "solar", "panou", "panouri"))
+                and not any(neg in name for neg in ("load", "consum", "grid", "retea", "house", "energy", "zi", "daily"))
+            ):
+                detected[CONF_SENSOR_PV_POWER] = entity_id
+
+        # 2. Load / House Power (W / kW)
+        if CONF_SENSOR_LOAD_POWER not in detected and (device_class == "power" or unit in ("W", "kW")):
+            if any(k in name for k in ("load_power", "home_power", "house_power", "consum", "consum_casa", "load power")) or (
+                any(k in name for k in ("load", "consum", "casa", "house", "home"))
+                and not any(neg in name for neg in ("pv", "solar", "panou", "battery", "baterie", "energy", "zi"))
+            ):
+                detected[CONF_SENSOR_LOAD_POWER] = entity_id
+
+        # 3. Battery SOC (%)
+        if CONF_SENSOR_BATT_SOC not in detected and (device_class == "battery" or unit == "%"):
+            if any(k in name for k in ("battery", "baterie", "batt", "soc")) and not any(neg in name for neg in ("phone", "telefon", "laptop")):
+                detected[CONF_SENSOR_BATT_SOC] = entity_id
+
+        # 4. Energy Today / Daily Solar (kWh)
+        if CONF_SENSOR_ENERGY_TODAY not in detected and (device_class == "energy" or unit in ("kWh", "Wh")):
+            if (any(k in name for k in ("today", "daily", "zi", "ziua")) and any(k in name for k in ("solar", "pv", "panou", "produc", "energie"))) or (
+                any(k in name for k in ("solar_daily_energy", "solar_energy_today", "pv_daily_energy", "energie_zi"))
+            ):
+                detected[CONF_SENSOR_ENERGY_TODAY] = entity_id
+
+        # 5. Battery Voltage (V)
+        if CONF_SENSOR_BATT_VOLT not in detected and (device_class == "voltage" or unit == "V"):
+            if any(k in name for k in ("battery_voltage", "batt_volt", "tensiune_baterie", "battery volt")) or (
+                any(k in name for k in ("batt", "battery", "baterie")) and "volt" in name
+            ):
+                detected[CONF_SENSOR_BATT_VOLT] = entity_id
+
+        # 6. Battery Power (W / kW)
+        if CONF_SENSOR_BATT_POWER not in detected and (device_class == "power" or unit in ("W", "kW")):
+            if any(k in name for k in ("battery_power", "batt_power", "putere_baterie", "battery power")):
+                detected[CONF_SENSOR_BATT_POWER] = entity_id
+
+        # 7. Grid Voltage (V)
+        if CONF_SENSOR_GRID_VOLT not in detected and (device_class == "voltage" or unit == "V"):
+            if any(k in name for k in ("grid_voltage", "ac_voltage", "grid_volt", "tensiune_retea", "grid volt")):
+                detected[CONF_SENSOR_GRID_VOLT] = entity_id
+
+    # Fallback for energy today if still not detected
+    if CONF_SENSOR_ENERGY_TODAY not in detected:
+        for state in all_states:
+            if state.entity_id.startswith("sensor.") and state.attributes.get("unit_of_measurement") in ("kWh", "Wh"):
+                name = f"{state.entity_id} {state.attributes.get('friendly_name', '')}".lower()
+                if any(k in name for k in ("solar", "pv", "produc", "generation")):
+                    detected[CONF_SENSOR_ENERGY_TODAY] = state.entity_id
+                    break
+
+    return detected
+
+
 class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Solars Systems."""
 
@@ -93,7 +164,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_sensors(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Step 2: Map inverters and sensors."""
+        """Step 2: Map inverters and sensors with intelligent auto-detection."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -116,29 +187,61 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             for dev in self._devices
         }
 
-        schema = vol.Schema({
+        # Run auto-detection across Home Assistant entities
+        detected = _auto_detect_sensors(self.hass)
+
+        schema_dict = {
             vol.Required(CONF_INVERTER_ID, default=list(device_options.keys())[0]): vol.In(device_options),
-            vol.Optional(CONF_SENSOR_PV_POWER): selector.EntitySelector(
+            
+            vol.Optional(
+                CONF_SENSOR_PV_POWER,
+                **({"default": detected[CONF_SENSOR_PV_POWER]} if CONF_SENSOR_PV_POWER in detected else {})
+            ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="power")
             ),
-            vol.Optional(CONF_SENSOR_LOAD_POWER): selector.EntitySelector(
+            
+            vol.Optional(
+                CONF_SENSOR_LOAD_POWER,
+                **({"default": detected[CONF_SENSOR_LOAD_POWER]} if CONF_SENSOR_LOAD_POWER in detected else {})
+            ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="power")
             ),
-            vol.Optional(CONF_SENSOR_BATT_SOC): selector.EntitySelector(
+            
+            vol.Optional(
+                CONF_SENSOR_BATT_SOC,
+                **({"default": detected[CONF_SENSOR_BATT_SOC]} if CONF_SENSOR_BATT_SOC in detected else {})
+            ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="battery")
             ),
-            vol.Optional(CONF_SENSOR_ENERGY_TODAY): selector.EntitySelector(
+            
+            vol.Optional(
+                CONF_SENSOR_ENERGY_TODAY,
+                **({"default": detected[CONF_SENSOR_ENERGY_TODAY]} if CONF_SENSOR_ENERGY_TODAY in detected else {})
+            ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="energy")
             ),
-            vol.Optional(CONF_SENSOR_BATT_VOLT): selector.EntitySelector(
+            
+            vol.Optional(
+                CONF_SENSOR_BATT_VOLT,
+                **({"default": detected[CONF_SENSOR_BATT_VOLT]} if CONF_SENSOR_BATT_VOLT in detected else {})
+            ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
             ),
-            vol.Optional(CONF_SENSOR_BATT_POWER): selector.EntitySelector(
+            
+            vol.Optional(
+                CONF_SENSOR_BATT_POWER,
+                **({"default": detected[CONF_SENSOR_BATT_POWER]} if CONF_SENSOR_BATT_POWER in detected else {})
+            ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="power")
             ),
-            vol.Optional(CONF_SENSOR_GRID_VOLT): selector.EntitySelector(
+            
+            vol.Optional(
+                CONF_SENSOR_GRID_VOLT,
+                **({"default": detected[CONF_SENSOR_GRID_VOLT]} if CONF_SENSOR_GRID_VOLT in detected else {})
+            ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
             ),
+            
             vol.Optional(CONF_IMPORT_HISTORY, default=True): bool,
             vol.Optional(CONF_HISTORY_RANGE, default=HISTORY_RANGE_ALL): selector.SelectSelector(
                 selector.SelectSelectorConfig(
@@ -155,10 +258,10 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL): vol.All(
                 vol.Coerce(int), vol.Range(min=10, max=300)
             ),
-        })
+        }
 
         return self.async_show_form(
             step_id="sensors",
-            data_schema=schema,
+            data_schema=vol.Schema(schema_dict),
             errors=errors,
         )
