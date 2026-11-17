@@ -6,7 +6,7 @@
   "documentation": "https://solars-systems.eu",
   "integration_type": "hub",
   "iot_class": "cloud_push",
-  "issue_tracker": "https://github.com/solars-systems/homeassistant-solars/issues",
+  "issue_tracker": "https://github.com/solars-systems/solars-systems-ha/issues",
   "requirements": ["aiohttp>=3.8.5"],
   "dependencies": ["recorder"],
   "version": "1.0.0"
