@@ -1,0 +1,46 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Solars Systems",
+        "description": "Enter your API Key from your account on https://solars-systems.eu (API Keys section).",
+        "data": {
+          "api_key": "API Key"
+        }
+      },
+      "sensors": {
+        "title": "Configure Inverter and Sensors",
+        "description": "Select your target inverter and map your Home Assistant sensors.",
+        "data": {
+          "inverter_id": "Solars Systems Inverter",
+          "sensor_pv_power": "Solar PV Power Sensor (W/kW)",
+          "sensor_load_power": "Home Load Power Sensor (W/kW)",
+          "sensor_batt_soc": "Battery Level Sensor (%)",
+          "sensor_energy_today": "Solar Energy Sensor (kWh)",
+          "sensor_batt_volt": "Battery Voltage Sensor (V)",
+          "sensor_batt_power": "Battery Power Sensor (W)",
+          "sensor_grid_volt": "Grid AC Voltage Sensor (V)",
+          "import_history": "Import past historical energy data",
+          "history_range": "History range",
+          "update_interval": "Live update interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to Solars Systems server.",
+      "invalid_auth": "Invalid API Key. Please verify your key on solars-systems.eu.",
+      "no_inverters_found": "No inverters found in your Solars Systems account.",
+      "unknown": "Unexpected authentication error."
+    }
+  },
+  "selector": {
+    "history_range": {
+      "options": {
+        "30_days": "Last 30 days",
+        "90_days": "Last 90 days",
+        "1_year": "Last year",
+        "all": "All available history"
+      }
+    }
+  }
+}

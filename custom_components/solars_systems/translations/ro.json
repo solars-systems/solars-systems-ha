@@ -1,0 +1,46 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Conectare la Solars Systems",
+        "description": "Introduceți cheia API din contul dvs. de pe https://solars-systems.eu (Secțiunea Chei API).",
+        "data": {
+          "api_key": "Cheie API (API Key)"
+        }
+      },
+      "sensors": {
+        "title": "Configurare Invertor și Senzori",
+        "description": "Selectați invertorul țintă din contul dvs. și asociați senzorii măsurați în Home Assistant.",
+        "data": {
+          "inverter_id": "Invertor Solars Systems",
+          "sensor_pv_power": "Senzor Putere Panouri Fotovoltaice (W/kW)",
+          "sensor_load_power": "Senzor Consum Casă (W/kW)",
+          "sensor_batt_soc": "Senzor Nivel Baterie (%)",
+          "sensor_energy_today": "Senzor Producție Energie (kWh)",
+          "sensor_batt_volt": "Senzor Tensiune Baterie (V)",
+          "sensor_batt_power": "Senzor Putere Baterie (W)",
+          "sensor_grid_volt": "Senzor Tensiune Rețea AC (V)",
+          "import_history": "Importă istoricul de energie din trecut",
+          "history_range": "Interval istoric",
+          "update_interval": "Interval trimitere date live (secunde)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nu s-a putut realiza conexiunea cu serverul Solars Systems.",
+      "invalid_auth": "Cheie API invalidă. Verificați cheia pe solars-systems.eu.",
+      "no_inverters_found": "Nu aveți niciun invertor înregistrat în contul dvs. Solars Systems.",
+      "unknown": "Eroare neașteptată la autentificare."
+    }
+  },
+  "selector": {
+    "history_range": {
+      "options": {
+        "30_days": "Ultimele 30 de zile",
+        "90_days": "Ultimele 90 de zile",
+        "1_year": "Ultimul an",
+        "all": "Tot istoricul disponibil"
+      }
+    }
+  }
+}
