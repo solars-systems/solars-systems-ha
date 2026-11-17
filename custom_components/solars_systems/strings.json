@@ -8,22 +8,30 @@
           "api_key": "Cheie API (API Key)"
         }
       },
-      "sensors": {
-        "title": "Configurare Invertor și Senzori",
-        "description": "Selectați invertorul țintă din contul dvs. și asociați senzorii măsurați în Home Assistant.",
+      "layout": {
+        "title": "Arhitectură Instalație Solare",
+        "description": "Selectați invertorul din contul dvs. și configurați numărul de invertoare și MPPT-uri instalate.",
         "data": {
           "inverter_id": "Invertor Solars Systems",
+          "inverter_count": "Număr de invertoare în locație",
+          "mppt_per_inverter": "Număr de MPPT-uri / Stringuri per invertor"
+        }
+      },
+      "sensors": {
+        "title": "Configurare Senzori Home Assistant",
+        "description": "Asociați senzorii măsurați în Home Assistant cu intrările sistemului Solars Systems.",
+        "data": {
           "sensor_pv_power": "Putere Totală Solară (W/kW)",
-          "sensor_pv1_volt": "Tensiune MPPT 1 (V)",
-          "sensor_pv1_power": "Putere MPPT 1 (W)",
-          "sensor_pv2_volt": "Tensiune MPPT 2 (V)",
-          "sensor_pv2_power": "Putere MPPT 2 (W)",
-          "sensor_load_power": "Senzor Consum Casă (W/kW)",
-          "sensor_batt_soc": "Senzor Nivel Baterie (%)",
-          "sensor_energy_today": "Senzor Producție Energie (kWh)",
-          "sensor_batt_volt": "Senzor Tensiune Baterie (V)",
-          "sensor_batt_power": "Senzor Putere Baterie (W)",
-          "sensor_grid_volt": "Senzor Tensiune Rețea AC (V)",
+          "sensor_load_power": "Consum Casă (W/kW)",
+          "sensor_batt_soc": "Nivel Baterie (%)",
+          "sensor_batt_volt": "Tensiune Baterie (V)",
+          "sensor_batt_curr": "Curent Baterie (A)",
+          "sensor_batt_power": "Putere Baterie (W)",
+          "sensor_grid_volt": "Tensiune Rețea AC In (V)",
+          "sensor_ac_out_volt": "Tensiune Ieșire AC Out (V)",
+          "sensor_energy_today": "Producție Energie Zilnică (kWh)",
+          "sensor_energy_month": "Producție Energie Lunară (kWh)",
+          "sensor_energy_year": "Producție Energie Anuală (kWh)",
           "import_history": "Importă istoricul de energie din trecut",
           "history_range": "Interval istoric",
           "update_interval": "Interval trimitere date live (secunde)"

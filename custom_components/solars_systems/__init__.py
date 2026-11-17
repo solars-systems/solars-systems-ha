@@ -20,16 +20,16 @@ from .const import (
     CONF_INVERTER_ID,
     CONF_UPDATE_INTERVAL,
     CONF_SENSOR_PV_POWER,
-    CONF_SENSOR_PV1_VOLT,
-    CONF_SENSOR_PV2_VOLT,
-    CONF_SENSOR_PV1_POWER,
-    CONF_SENSOR_PV2_POWER,
     CONF_SENSOR_LOAD_POWER,
     CONF_SENSOR_BATT_SOC,
     CONF_SENSOR_BATT_VOLT,
+    CONF_SENSOR_BATT_CURR,
     CONF_SENSOR_BATT_POWER,
     CONF_SENSOR_GRID_VOLT,
+    CONF_SENSOR_AC_OUT_VOLT,
     CONF_SENSOR_ENERGY_TODAY,
+    CONF_SENSOR_ENERGY_MONTH,
+    CONF_SENSOR_ENERGY_YEAR,
     CONF_IMPORT_HISTORY,
     CONF_HISTORY_RANGE,
     HISTORY_RANGE_30_DAYS,
@@ -79,47 +79,60 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return None
             return _safe_float(state.state)
 
-        pv1_volt = get_val(CONF_SENSOR_PV1_VOLT)
-        pv2_volt = get_val(CONF_SENSOR_PV2_VOLT)
-        pv1_pwr = get_val(CONF_SENSOR_PV1_POWER)
-        pv2_pwr = get_val(CONF_SENSOR_PV2_POWER)
+        # Dynamic MPPT Voltages and Inverter Powers (voltajPV1, voltajPV1_2, puterePV1...)
+        for k, entity_id in data.items():
+            if isinstance(k, str) and (k.startswith("voltajPV") or k.startswith("puterePV")):
+                val = get_val(k)
+                if val is not None:
+                    payload[k] = val
 
-        if pv1_volt is not None:
-            payload["voltajPV1"] = pv1_volt
-        if pv2_volt is not None:
-            payload["voltajPV1_2"] = pv2_volt
-        if pv1_pwr is not None:
-            payload["puterePV1_1"] = pv1_pwr
-        if pv2_pwr is not None:
-            payload["puterePV1_2"] = pv2_pwr
+        # Total Solar Power
+        tot_pv = get_val(CONF_SENSOR_PV_POWER)
+        if tot_pv is not None:
+            payload["puterePV"] = tot_pv
+        elif "puterePV" not in payload:
+            sub_powers = [v for k, v in payload.items() if k.startswith("puterePV") and isinstance(v, (int, float))]
+            if sub_powers:
+                payload["puterePV"] = sum(sub_powers)
 
-        pv_power = get_val(CONF_SENSOR_PV_POWER)
-        # If user didn't specify total solar power, auto-sum MPPT1 + MPPT2
-        if pv_power is None and (pv1_pwr is not None or pv2_pwr is not None):
-            pv_power = (pv1_pwr or 0.0) + (pv2_pwr or 0.0)
-        if pv_power is not None:
-            payload["puterePV"] = pv_power
-
+        # Consumption & Grid
         load_power = get_val(CONF_SENSOR_LOAD_POWER)
-        batt_soc = get_val(CONF_SENSOR_BATT_SOC)
-        batt_volt = get_val(CONF_SENSOR_BATT_VOLT)
-        batt_power = get_val(CONF_SENSOR_BATT_POWER)
         grid_volt = get_val(CONF_SENSOR_GRID_VOLT)
-        energy_today = get_val(CONF_SENSOR_ENERGY_TODAY)
+        ac_out_volt = get_val(CONF_SENSOR_AC_OUT_VOLT)
 
         if load_power is not None:
             payload["putereConsum"] = load_power
+        if grid_volt is not None:
+            payload["tensiuneAcIn"] = grid_volt
+        if ac_out_volt is not None:
+            payload["tensiuneAcOut"] = ac_out_volt
+
+        # Battery
+        batt_soc = get_val(CONF_SENSOR_BATT_SOC)
+        batt_volt = get_val(CONF_SENSOR_BATT_VOLT)
+        batt_curr = get_val(CONF_SENSOR_BATT_CURR)
+        batt_power = get_val(CONF_SENSOR_BATT_POWER)
+
         if batt_soc is not None:
             payload["procentBaterie"] = batt_soc
         if batt_volt is not None:
             payload["tensiuneBaterie"] = batt_volt
+        if batt_curr is not None:
+            payload["curentBaterie"] = batt_curr
         if batt_power is not None:
             payload["putereBaterie"] = batt_power
-        if grid_volt is not None:
-            payload["tensiuneAcIn"] = grid_volt
-            payload["tensiuneAcOut"] = grid_volt
+
+        # Energy (Today / Month / Year)
+        energy_today = get_val(CONF_SENSOR_ENERGY_TODAY)
+        energy_month = get_val(CONF_SENSOR_ENERGY_MONTH)
+        energy_year = get_val(CONF_SENSOR_ENERGY_YEAR)
+
         if energy_today is not None:
             payload["energieZi"] = energy_today
+        if energy_month is not None:
+            payload["energieLuna"] = energy_month
+        if energy_year is not None:
+            payload["energieAn"] = energy_year
 
         # Send to API
         try:

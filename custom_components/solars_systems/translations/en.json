@@ -8,22 +8,30 @@
           "api_key": "API Key"
         }
       },
-      "sensors": {
-        "title": "Configure Inverter and Sensors",
-        "description": "Select your target inverter and map your Home Assistant sensors.",
+      "layout": {
+        "title": "Solar Installation Architecture",
+        "description": "Select the inverter from your account and configure the number of installed inverters and MPPTs.",
         "data": {
           "inverter_id": "Solars Systems Inverter",
+          "inverter_count": "Number of inverters in location",
+          "mppt_per_inverter": "Number of MPPTs / Strings per inverter"
+        }
+      },
+      "sensors": {
+        "title": "Configure Home Assistant Sensors",
+        "description": "Map the sensors measured in Home Assistant to the Solars Systems platform inputs.",
+        "data": {
           "sensor_pv_power": "Total Solar PV Power (W/kW)",
-          "sensor_pv1_volt": "MPPT 1 Voltage (V)",
-          "sensor_pv1_power": "MPPT 1 Power (W)",
-          "sensor_pv2_volt": "MPPT 2 Voltage (V)",
-          "sensor_pv2_power": "MPPT 2 Power (W)",
-          "sensor_load_power": "Home Load Power Sensor (W/kW)",
-          "sensor_batt_soc": "Battery Level Sensor (%)",
-          "sensor_energy_today": "Solar Energy Sensor (kWh)",
-          "sensor_batt_volt": "Battery Voltage Sensor (V)",
-          "sensor_batt_power": "Battery Power Sensor (W)",
-          "sensor_grid_volt": "Grid AC Voltage Sensor (V)",
+          "sensor_load_power": "Home Load Power (W/kW)",
+          "sensor_batt_soc": "Battery State of Charge (%)",
+          "sensor_batt_volt": "Battery Voltage (V)",
+          "sensor_batt_curr": "Battery Current (A)",
+          "sensor_batt_power": "Battery Power (W)",
+          "sensor_grid_volt": "Grid AC In Voltage (V)",
+          "sensor_ac_out_volt": "Inverter AC Out Voltage (V)",
+          "sensor_energy_today": "Daily Energy Production (kWh)",
+          "sensor_energy_month": "Monthly Energy Production (kWh)",
+          "sensor_energy_year": "Yearly Energy Production (kWh)",
           "import_history": "Import past historical energy data",
           "history_range": "History range",
           "update_interval": "Live update interval (seconds)"
