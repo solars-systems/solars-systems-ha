@@ -9,29 +9,43 @@
         }
       },
       "layout": {
-        "title": "Arhitectură Instalație Solare",
-        "description": "Selectați invertorul din contul dvs. și configurați numărul de invertoare și MPPT-uri instalate.",
+        "title": "Arhitectură Instalație Solară",
+        "description": "Selectați invertorul din contul dvs. și configurați numărul de invertoare, MPPT-uri și presetul de sistem.",
         "data": {
           "inverter_id": "Invertor Solars Systems",
+          "system_preset": "Tip Sistem / Preset",
           "inverter_count": "Număr de invertoare în locație",
-          "mppt_per_inverter": "Număr de MPPT-uri / Stringuri per invertor"
+          "mppt_per_inverter": "Număr de MPPT-uri / Stringuri per invertor",
+          "has_battery": "Sistemul include baterie de stocare?"
         }
       },
-      "sensors": {
-        "title": "Configurare Senzori Home Assistant",
-        "description": "Asociați senzorii măsurați în Home Assistant cu intrările sistemului Solars Systems.",
+      "solar": {
+        "title": "Panouri Solare & Producție (PV)",
+        "description": "Asociați senzorii de putere panouri, tensiuni MPPT și contoarele de energie ale producției solare.",
         "data": {
           "sensor_pv_power": "Putere Totală Solară (W/kW)",
-          "sensor_load_power": "Consum Casă (W/kW)",
-          "sensor_batt_soc": "Nivel Baterie (%)",
-          "sensor_batt_volt": "Tensiune Baterie (V)",
-          "sensor_batt_curr": "Curent Baterie (A)",
-          "sensor_batt_power": "Putere Baterie (W)",
-          "sensor_grid_volt": "Tensiune Rețea AC In (V)",
-          "sensor_ac_out_volt": "Tensiune Ieșire AC Out (V)",
           "sensor_energy_today": "Producție Energie Zilnică (kWh)",
           "sensor_energy_month": "Producție Energie Lunară (kWh)",
-          "sensor_energy_year": "Producție Energie Anuală (kWh)",
+          "sensor_energy_year": "Producție Energie Anuală (kWh)"
+        }
+      },
+      "battery": {
+        "title": "Baterie & Stocare (Opțional)",
+        "description": "Selectați senzorii principali ai bateriei. Celulele individuale au fost excluse automat pentru a păstra lista curată.",
+        "data": {
+          "sensor_batt_soc": "Nivel Baterie SOC (%)",
+          "sensor_batt_volt": "Tensiune Pachet Baterie (V)",
+          "sensor_batt_curr": "Curent Baterie (A)",
+          "sensor_batt_power": "Putere Baterie (W/kW)"
+        }
+      },
+      "grid": {
+        "title": "Rețea, Consum Casă & Setări",
+        "description": "Configurați senzorii de consum, tensiune rețea și preferințele de transmitere live și istoric.",
+        "data": {
+          "sensor_load_power": "Consum Casă (W/kW)",
+          "sensor_grid_volt": "Tensiune Rețea AC In (V)",
+          "sensor_ac_out_volt": "Tensiune Ieșire Invertor AC Out (V)",
           "import_history": "Importă istoricul de energie din trecut",
           "history_range": "Interval istoric",
           "update_interval": "Interval trimitere date live (secunde)"
@@ -52,6 +66,12 @@
         "90_days": "Ultimele 90 de zile",
         "1_year": "Ultimul an",
         "all": "Tot istoricul disponibil"
+      }
+    },
+    "system_preset": {
+      "options": {
+        "solar_assistant": "SolarAssistant (Detectare automată)",
+        "custom": "Personalizat / Alte sisteme (Deye, Growatt, Huawei, Victron)"
       }
     }
   }

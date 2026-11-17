@@ -3,45 +3,59 @@
     "step": {
       "user": {
         "title": "Connect to Solars Systems",
-        "description": "Enter your API Key from your account on https://solars-systems.eu (API Keys section).",
+        "description": "Enter your API key from your https://solars-systems.eu account (API Keys section).",
         "data": {
           "api_key": "API Key"
         }
       },
       "layout": {
         "title": "Solar Installation Architecture",
-        "description": "Select the inverter from your account and configure the number of installed inverters and MPPTs.",
+        "description": "Select the inverter from your account, inverters count, MPPTs and system preset.",
         "data": {
           "inverter_id": "Solars Systems Inverter",
-          "inverter_count": "Number of inverters in location",
-          "mppt_per_inverter": "Number of MPPTs / Strings per inverter"
+          "system_preset": "System Preset",
+          "inverter_count": "Number of inverters",
+          "mppt_per_inverter": "MPPT / String count per inverter",
+          "has_battery": "System has battery storage?"
         }
       },
-      "sensors": {
-        "title": "Configure Home Assistant Sensors",
-        "description": "Map the sensors measured in Home Assistant to the Solars Systems platform inputs.",
+      "solar": {
+        "title": "Solar PV Panels & Production",
+        "description": "Map your solar PV power sensors, MPPT string voltages, and energy yield sensors.",
         "data": {
-          "sensor_pv_power": "Total Solar PV Power (W/kW)",
-          "sensor_load_power": "Home Load Power (W/kW)",
-          "sensor_batt_soc": "Battery State of Charge (%)",
-          "sensor_batt_volt": "Battery Voltage (V)",
-          "sensor_batt_curr": "Battery Current (A)",
-          "sensor_batt_power": "Battery Power (W)",
-          "sensor_grid_volt": "Grid AC In Voltage (V)",
-          "sensor_ac_out_volt": "Inverter AC Out Voltage (V)",
+          "sensor_pv_power": "Total Solar Power (W/kW)",
           "sensor_energy_today": "Daily Energy Production (kWh)",
           "sensor_energy_month": "Monthly Energy Production (kWh)",
-          "sensor_energy_year": "Yearly Energy Production (kWh)",
-          "import_history": "Import past historical energy data",
+          "sensor_energy_year": "Yearly Energy Production (kWh)"
+        }
+      },
+      "battery": {
+        "title": "Battery & Storage (Optional)",
+        "description": "Select the main battery pack sensors. Individual cell voltages have been automatically excluded.",
+        "data": {
+          "sensor_batt_soc": "Battery Level SOC (%)",
+          "sensor_batt_volt": "Battery Pack Voltage (V)",
+          "sensor_batt_curr": "Battery Current (A)",
+          "sensor_batt_power": "Battery Power (W/kW)"
+        }
+      },
+      "grid": {
+        "title": "Grid, Load Consumption & Settings",
+        "description": "Configure house load power, grid AC voltages, history import and live reporting interval.",
+        "data": {
+          "sensor_load_power": "House Load Power (W/kW)",
+          "sensor_grid_volt": "Grid AC In Voltage (V)",
+          "sensor_ac_out_volt": "Inverter AC Out Voltage (V)",
+          "import_history": "Import past energy history",
           "history_range": "History range",
-          "update_interval": "Live update interval (seconds)"
+          "update_interval": "Live data update interval (seconds)"
         }
       }
     },
     "error": {
       "cannot_connect": "Could not connect to Solars Systems server.",
-      "invalid_auth": "Invalid API Key. Please verify your key on solars-systems.eu.",
-      "no_inverters_found": "No inverters found in your Solars Systems account.",
+      "invalid_auth": "Invalid API key. Check your key on solars-systems.eu.",
+      "no_inverters_found": "No registered inverter found in your Solars Systems account.",
       "unknown": "Unexpected authentication error."
     }
   },
@@ -50,8 +64,14 @@
       "options": {
         "30_days": "Last 30 days",
         "90_days": "Last 90 days",
-        "1_year": "Last year",
+        "1_year": "Last 1 year",
         "all": "All available history"
+      }
+    },
+    "system_preset": {
+      "options": {
+        "solar_assistant": "SolarAssistant (Auto-Detect)",
+        "custom": "Custom / Other systems (Deye, Growatt, Huawei, Victron)"
       }
     }
   }

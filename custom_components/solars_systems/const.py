@@ -9,7 +9,12 @@ CONF_API_KEY = "api_key"
 CONF_INVERTER_ID = "inverter_id"
 CONF_INVERTER_COUNT = "inverter_count"
 CONF_MPPT_PER_INVERTER = "mppt_per_inverter"
+CONF_HAS_BATTERY = "has_battery"
+CONF_PRESET = "system_preset"
 CONF_UPDATE_INTERVAL = "update_interval"
+
+PRESET_SOLAR_ASSISTANT = "solar_assistant"
+PRESET_CUSTOM = "custom"
 
 CONF_SENSOR_PV_POWER = "sensor_pv_power"
 CONF_SENSOR_LOAD_POWER = "sensor_load_power"
