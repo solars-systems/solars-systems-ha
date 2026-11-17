@@ -42,8 +42,32 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def _auto_detect_candidate(hass, domain: str, device_class: str | None, units: tuple[str, ...], keywords: tuple[str, ...], negative_keywords: tuple[str, ...] = ()) -> str | None:
-    """Find a candidate sensor matching criteria."""
+COMMON_NON_SOLAR_KEYWORDS = (
+    "tablet", "tableta", "ipad", "telefon", "phone", "mobile", "laptop",
+    "pompa", "heat_pump", "caldura", "clima", "ac_", "aer_conditionat",
+    "boiler", "priza", "plug", "socket", "smart_plug", "releu", "relay",
+    "shelly", "sonoff", "tuya", "bec", "light", "lumina", "tv", "frigider",
+    "masina_spalat", "cuptor", "aspirator", "ups", "watch", "ceas", "smartwatch",
+    "temperatura", "temp_", "humidity", "umiditate", "motion", "door", "window",
+)
+
+SOLAR_CONTEXT_KEYWORDS = (
+    "solar", "pv", "panou", "invert", "inv_", "inverter", "mppt", "bms", "jk",
+    "lifepo4", "pylon", "byd", "victron", "storage", "acumulator", "baterie_solara",
+    "fotovolt", "yield", "solarpro", "solars", "deye", "growatt", "huawei", "solis",
+)
+
+
+def _auto_detect_candidate(
+    hass,
+    domain: str,
+    device_class: str | None,
+    units: tuple[str, ...],
+    keywords: tuple[str, ...],
+    negative_keywords: tuple[str, ...] = (),
+    require_solar_context: bool = False,
+) -> str | None:
+    """Find a candidate sensor matching criteria with strict non-solar exclusions."""
     for state in hass.states.async_all():
         entity_id = state.entity_id
         if not entity_id.startswith(f"{domain}."):
@@ -58,8 +82,16 @@ def _auto_detect_candidate(hass, domain: str, device_class: str | None, units: t
         if not class_match:
             continue
 
-        # Keywords matching
+        # Global exclusion of household appliances, phones, tablets, heat pumps
+        if any(neg in name for neg in COMMON_NON_SOLAR_KEYWORDS):
+            continue
+
+        # Specific negative keywords matching
         if any(neg in name for neg in negative_keywords):
+            continue
+
+        # If solar context is required, must contain at least one solar keyword
+        if require_solar_context and not any(sc in name for sc in SOLAR_CONTEXT_KEYWORDS):
             continue
 
         if any(kw in name for kw in keywords):
@@ -224,7 +256,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # 2. Total Solar Power
         tot_pv_cand = _auto_detect_candidate(
-            self.hass, "sensor", "power", ("W", "kW"), ("solar_power", "total_pv", "total_panouri", "putere_pv", "pv_power"), ("consum", "load", "battery")
+            self.hass, "sensor", "power", ("W", "kW"), ("solar_power", "total_pv", "total_panouri", "putere_pv", "pv_power"), ("consum", "load", "battery"), require_solar_context=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_PV_POWER, **({"default": tot_pv_cand} if tot_pv_cand else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="power")
@@ -240,28 +272,28 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # 4. Battery Sensors
         soc_cand = _auto_detect_candidate(
-            self.hass, "sensor", "battery", ("%",), ("battery", "baterie", "soc"), ("phone", "telefon", "laptop")
+            self.hass, "sensor", "battery", ("%",), ("battery_soc", "bms_soc", "baterie_soc", "soc"), ("phone", "telefon", "laptop"), require_solar_context=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_BATT_SOC, **({"default": soc_cand} if soc_cand else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="battery")
         )
 
         batt_v_cand = _auto_detect_candidate(
-            self.hass, "sensor", "voltage", ("V",), ("battery_voltage", "voltaj_baterie", "batt_volt", "battery_volt"), ()
+            self.hass, "sensor", "voltage", ("V",), ("battery_voltage", "voltaj_baterie", "batt_volt", "battery_volt", "bms_voltage"), (), require_solar_context=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_BATT_VOLT, **({"default": batt_v_cand} if batt_v_cand else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
         )
 
         batt_c_cand = _auto_detect_candidate(
-            self.hass, "sensor", "current", ("A",), ("battery_current", "curent_baterie", "batt_current"), ()
+            self.hass, "sensor", "current", ("A",), ("battery_current", "curent_baterie", "batt_current", "bms_current"), (), require_solar_context=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_BATT_CURR, **({"default": batt_c_cand} if batt_c_cand else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="current")
         )
 
         batt_p_cand = _auto_detect_candidate(
-            self.hass, "sensor", "power", ("W", "kW"), ("battery_power", "putere_baterie", "batt_power"), ()
+            self.hass, "sensor", "power", ("W", "kW"), ("battery_power", "putere_baterie", "batt_power", "bms_power"), (), require_solar_context=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_BATT_POWER, **({"default": batt_p_cand} if batt_p_cand else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="power")
@@ -284,21 +316,21 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # 6. Energy Sensors
         e_today_cand = _auto_detect_candidate(
-            self.hass, "sensor", "energy", ("kWh", "Wh"), ("energy_today", "daily_energy", "productie_zi", "energie_zi", "solar_today"), ()
+            self.hass, "sensor", "energy", ("kWh", "Wh"), ("energy_today", "daily_energy", "productie_zi", "energie_zi", "solar_today"), ("consum", "load", "pompa", "heat_pump", "retea", "grid"), require_solar_context=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_ENERGY_TODAY, **({"default": e_today_cand} if e_today_cand else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="energy")
         )
 
         e_month_cand = _auto_detect_candidate(
-            self.hass, "sensor", "energy", ("kWh", "Wh"), ("monthly_energy", "energy_month", "productie_luna", "energie_luna"), ()
+            self.hass, "sensor", "energy", ("kWh", "Wh"), ("monthly_energy", "energy_month", "productie_luna", "energie_luna"), ("consum", "load", "pompa", "heat_pump", "retea", "grid"), require_solar_context=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_ENERGY_MONTH, **({"default": e_month_cand} if e_month_cand else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="energy")
         )
 
         e_year_cand = _auto_detect_candidate(
-            self.hass, "sensor", "energy", ("kWh", "Wh"), ("yearly_energy", "energy_year", "productie_an", "energie_an"), ()
+            self.hass, "sensor", "energy", ("kWh", "Wh"), ("yearly_energy", "energy_year", "productie_an", "energie_an"), ("consum", "load", "pompa", "heat_pump", "retea", "grid"), require_solar_context=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_ENERGY_YEAR, **({"default": e_year_cand} if e_year_cand else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="energy")
