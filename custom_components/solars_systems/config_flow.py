@@ -46,7 +46,10 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 COMMON_NON_SOLAR_KEYWORDS = (
+    # Dispozitive mobile & Tablete perete
     "tablet", "tableta", "ipad", "telefon", "phone", "mobile", "laptop",
+    "wallpanel", "fully_kiosk", "fullykiosk", "fire_hd", "kindle",
+    "galaxy_tab", "sm_t", "tab_a", "mobile_app", "companion",
     # Pompe de caldura & Climatizare
     "pompa", "heat_pump", "heatpump", "caldura", "clima", "ac_", "aer_conditionat",
     "daikin", "nibe", "panasonic", "aquarea", "mitsubishi", "termopompa", "chiller",
