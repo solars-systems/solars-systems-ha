@@ -1,52 +1,55 @@
+[🇷🇴 Citiți această pagină în Română](README.ro.md)
+
 # Solars Systems - Home Assistant Integration
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/solars-systems/solars-systems-ha?color=blue)](https://github.com/solars-systems/solars-systems-ha/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Integrarea oficială Home Assistant pentru platforma [Solars Systems](https://solars-systems.eu).
+The official Home Assistant integration for the [Solars Systems](https://solars-systems.eu) monitoring and management platform.
 
-Permite proprietarilor de sisteme fotovoltaice (Deye, Huawei, Growatt, Victron, Fronius, Sungrow etc.) care utilizează Home Assistant să transmită telemetria în timp real și să sincronizeze istoricul complet de producție direct în platforma **Solars Systems**.
-
----
-
-## ✨ Funcționalități Principale
-
-* **📡 Telemetrie în Timp Real:**
-  * Putere fotovoltaică totală (W / kW) și putere defalcată per invertor / MPPT
-  * Tensiuni individuale per MPPT / String (`voltajPV1`, `voltajPV1_2`, `voltajPV2`, etc.)
-  * Consum locuință / Sarcină (W / kW)
-  * Monitorizare completă baterie: Nivel (SoC %), Tensiune (V), Curent (A) și Putere încărcare/descărcare (W)
-  * Tensiuni rețea: Tensiune intrare AC In (Grid) și tensiune ieșire invertor AC Out (Inverter Output)
-  * Energie produsă: Zilnică (zi), Lunară (lună) și Anuală (an) în kWh
-* **⚡ Arhitectură Flexibilă (Multi-Invertor & Multi-MPPT):**
-  * Suportă de la 1 la 6 invertoare în cascadă / paralel
-  * Suportă între 1 și 4 intrări MPPT per invertor
-  * Generează dinamic câmpurile necesare pentru maparea fiecărui string fotovoltaic
-* **📊 Import Istoric Inteligent (Monotonic Upsert):**
-  * Extrage automat datele istorice de energie (kWh/zi) din statisticile Home Assistant (30 zile, 90 zile, 1 an sau tot istoricul)
-  * **Idempotent:** Nu suprascrie niciodată date bune existente cu valori mai mici; dacă o zi există deja, o actualizează doar dacă noua valoare din Home Assistant este mai mare
-  * Notificare persistentă în Home Assistant la finalizarea sincronizării
-* **🔒 Securitate:** Autentificare directă prin **Cheie API** (`x-api-key`) generată din contul Solars Systems
+Allows owners of photovoltaic systems (SolarAssistant, Deye, Huawei, Growatt, Victron, Fronius, Sungrow, Infinisolar, etc.) using Home Assistant to stream live telemetry and synchronize historical production data seamlessly into the **Solars Systems** cloud platform.
 
 ---
 
-## ⚡ Instalare Rapidă
+## ✨ Key Features
 
-1. În **HACS** -> **Integrations** -> meniul din dreapta sus (`⋮`) -> **Custom repositories**, adăugați:
+* **📡 Real-Time Telemetry Streaming:**
+  * Total Solar PV Power (W / kW) and individual power per inverter / MPPT
+  * Individual MPPT / String voltages (`voltajPV1`, `voltajPV1_2`, `voltajPV2`, etc.)
+  * Home Consumption / Load Power (W / kW)
+  * Comprehensive Battery Storage Monitoring: State of Charge (SoC %), Pack Voltage (V), Current (A), and Charge/Discharge Power (W)
+  * Grid AC Voltages: AC Input (Grid) and Inverter AC Output voltage
+  * Energy Yield: Daily (today), Monthly (this month), and Yearly (this year) in kWh
+* **⚡ SolarAssistant & Multi-Inverter Presets:**
+  * **SolarAssistant Auto-Detect:** Automatically pre-maps standard SolarAssistant entity IDs in seconds
+  * **Smart Anti-Cell Filter:** Automatically excludes hundreds of individual BMS cell sensors (`cell_1`..`cell_24`), preventing dropdown clutter
+  * **Appliance & Heat Pump Shield:** Intelligent keyword filters prevent heat pumps, AC units, and wall-mounted dashboard tablets from being misidentified as solar entities
+  * Supports cascading / parallel setups from 1 to 6 inverters and 1 to 4 MPPT strings per inverter
+* **📊 Monotonic Historical Energy Import:**
+  * Automatically extracts historical daily energy stats (kWh/day) from Home Assistant's long-term statistics (last 30 days, 90 days, 1 year, or all-time)
+  * **Monotonic & Idempotent:** Never overwrites valid historical records with lower values; existing entries are only updated if Home Assistant provides a higher, more accurate value
+  * Emits a persistent Home Assistant notification once history import completes
+* **🔒 Secure Authentication:** Direct API Key authentication (`x-api-key`) generated from your Solars Systems account
+
+---
+
+## ⚡ Quick Installation
+
+1. In **HACS** -> **Integrations** -> top-right menu (`⋮`) -> **Custom repositories**, add:
    ```text
    https://github.com/solars-systems/solars-systems-ha
    ```
-   *(Categoria: `Integration`)*
-2. Descărcați integrarea **Solars Systems** și reporniți Home Assistant.
-3. Mergeți la **Settings** -> **Devices & Services** -> **Add Integration**, căutați **Solars Systems** și urmați pașii de configurare.
+   *(Category: `Integration`)*
+2. Download the **Solars Systems** integration and restart Home Assistant.
+3. Navigate to **Settings** -> **Devices & Services** -> **Add Integration**, search for **Solars Systems**, and follow the guided setup wizard.
 
-> 📖 **Aveți nevoie de ajutor sau instrucțiuni detaliate?**  
-> Consultați [**Ghidul Detaliat de Instalare și Configurare (INSTALLATION.md)**](INSTALLATION.md) pentru pași amănunțiți, configurarea senzorilor, instalarea manuală și depanare.
+> 📖 **Need step-by-step instructions?**  
+> Check out the [**Detailed Installation & Configuration Guide (INSTALLATION.md)**](INSTALLATION.md) for manual installation, sensor mapping tips, and troubleshooting.
 
 ---
 
-## 📄 Licență
+## 📄 License
 
-Acest proiect este licențiat sub [Licența MIT](LICENSE).  
-Dezvoltat și menținut de echipa [Solars Systems](https://solars-systems.eu).
+This project is licensed under the [MIT License](LICENSE).  
+Developed and maintained by the [Solars Systems](https://solars-systems.eu) team.
