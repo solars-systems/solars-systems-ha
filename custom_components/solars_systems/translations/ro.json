@@ -15,7 +15,8 @@
           "inverter_id": "Invertor Solars Systems",
           "system_preset": "Tip Sistem / Preset",
           "inverter_count": "Număr de invertoare în locație",
-          "has_battery": "Sistemul include baterie de stocare?"
+          "has_battery": "Sistemul include baterie de stocare?",
+          "has_ha_bms": "Am pachete BMS integrate în Home Assistant (JK, Daly, Seplos, Pylontech)"
         }
       },
       "solar": {
@@ -61,6 +62,13 @@
           "mppt_inv_5": "Invertor 5 - Număr MPPT-uri",
           "mppt_inv_6": "Invertor 6 - Număr MPPT-uri"
         }
+      },
+      "bms": {
+        "title": "Pachete Baterii BMS (Opțional)",
+        "description": "Selectați numărul de pachete BMS și senzorii corespunzători (tensiune, curent, SOC, delta celule, temperaturi):",
+        "data": {
+          "bms_count": "Număr de pachete BMS"
+        }
       }
     },
     "error": {
@@ -82,7 +90,8 @@
     "system_preset": {
       "options": {
         "solar_assistant": "SolarAssistant (Detectare automată)",
-        "custom": "Personalizat / Alte sisteme (Deye, Growatt, Huawei, Victron)"
+        "custom": "Personalizat / Alte sisteme (Deye, Growatt, Huawei, Victron)",
+        "axpert": "Axpert / Voltronic / Easun (Auto-detectare)"
       }
     }
   },
@@ -93,7 +102,8 @@
         "description": "Modificați numărul de invertoare, MPPT-uri și prezența bateriei.",
         "data": {
           "inverter_count": "Număr de invertoare în locație",
-          "has_battery": "Sistemul include baterie de stocare?"
+          "has_battery": "Sistemul include baterie de stocare?",
+          "has_ha_bms": "Am pachete BMS integrate în Home Assistant (JK, Daly, Seplos, Pylontech)"
         }
       },
       "solar": {
@@ -136,6 +146,13 @@
           "mppt_inv_4": "Invertor 4 - Număr MPPT-uri",
           "mppt_inv_5": "Invertor 5 - Număr MPPT-uri",
           "mppt_inv_6": "Invertor 6 - Număr MPPT-uri"
+        }
+      },
+      "bms": {
+        "title": "Pachete Baterii BMS (Opțional)",
+        "description": "Ajustați numărul de pachete BMS și senzorii asociați fiecărui pachet:",
+        "data": {
+          "bms_count": "Număr de pachete BMS"
         }
       }
     }

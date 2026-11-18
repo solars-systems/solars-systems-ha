@@ -22,7 +22,10 @@ from .const import (
     CONF_HAS_BATTERY,
     CONF_PRESET,
     PRESET_SOLAR_ASSISTANT,
+    PRESET_AXPERT,
     PRESET_CUSTOM,
+    CONF_HAS_HA_BMS,
+    CONF_BMS_COUNT,
     CONF_UPDATE_INTERVAL,
     CONF_SENSOR_PV_POWER,
     CONF_SENSOR_LOAD_POWER,
@@ -78,7 +81,7 @@ SOLAR_CONTEXT_KEYWORDS = (
     "lifepo4", "pylon", "byd", "victron", "storage", "acumulator", "baterie_solara",
     "fotovolt", "yield", "solarpro", "solars", "deye", "growatt", "huawei", "solis",
     "infinisolar", "fronius", "goodwe", "solax", "total_panouri", "total_baterie",
-    "solar_assistant", "solarassistant",
+    "solar_assistant", "solarassistant", "axpert", "axpert_max", "voltronic", "easun", "pv_day_meter",
 )
 
 
@@ -215,8 +218,10 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_INVERTER_ID, default=list(device_options.keys())[0]): vol.In(device_options),
             vol.Required(CONF_PRESET, default=PRESET_SOLAR_ASSISTANT): vol.In({
                 PRESET_SOLAR_ASSISTANT: "SolarAssistant (Detectare automată)",
+                PRESET_AXPERT: "Axpert / Voltronic / Easun (Auto-detectare)",
                 PRESET_CUSTOM: "Personalizat / Alte sisteme (Deye, Growatt, Huawei, Victron)",
             }),
+            vol.Optional(CONF_HAS_HA_BMS, default=False): bool,
             vol.Required(CONF_INVERTER_COUNT, default=1): vol.In({
                 1: "1 Invertor (Standard)",
                 2: "2 Invertoare în paralel",
@@ -279,7 +284,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # 1. Total Solar Power (e.g. sensor.total_pv_power, sensor.pv_power, sensor.total_panouri)
         tot_pv_cand = _auto_detect_candidate(
             self.hass, "sensor", "power", ("W", "kW"),
-            ("sensor.total_pv_power", "sensor.pv_power", "total_pv_power", "pv_power", "total_panouri", "total_pv", "putere_pv", "solar_power", "total solar"),
+            ("sensor.total_pv_power", "sensor.pv_power", "sensor.axpert_max_pv_power_1", "total_pv_power", "pv_power", "axpert_max_pv_power_1", "axpert_max_pv_power", "voltronic_pv_power", "total_panouri", "total_pv", "putere_pv", "solar_power", "total solar"),
             ("consum", "load", "battery", "baterie"),
             require_solar_context=True
         )
@@ -308,6 +313,10 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     f"vpv{m}",
                     f"growatt_voltaj",
                     f"pv{inv}",
+                    f"sensor.axpert_max_pv_voltage_{m}",
+                    f"axpert_max_pv_voltage_{m}",
+                    f"axpert_pv_voltage_{m}",
+                    f"voltronic_pv_voltage_{m}",
                 ]
                 
                 cand = _auto_detect_candidate(
@@ -337,7 +346,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # 3. Energy Production Sensors (Daily, Monthly, Yearly)
         e_today_cand = _auto_detect_candidate(
             self.hass, "sensor", "energy", ("kWh", "Wh"),
-            ("sensor.solar_energy_today", "sensor.energy_today", "solar_energy_today", "energy_today", "productie_zi", "energie_zi", "daily_energy", "solar_today", "today_energy"),
+            ("sensor.solar_energy_today", "sensor.energy_today", "sensor.pv_day_meter", "solar_energy_today", "energy_today", "pv_day_meter", "pv_day_energy", "productie_zi", "energie_zi", "daily_energy", "solar_today", "today_energy"),
             ("consum", "load", "pompa", "heat_pump", "retea", "grid"),
             require_solar_context=True
         )
@@ -379,6 +388,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             self._collected_data.update(user_input)
+            if self._layout.get(CONF_HAS_HA_BMS, False):
+                return await self.async_step_bms()
             return await self.async_step_grid()
 
         schema_dict: dict[Any, Any] = {}
@@ -386,7 +397,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # 1. Battery SOC (%)
         soc_cand = _auto_detect_candidate(
             self.hass, "sensor", "battery", ("%",),
-            ("sensor.battery_state_of_charge", "battery_state_of_charge", "voltaj_total_baterie_soc", "baterie_soc", "battery_soc", "bms_soc", "procent_baterie", "procentbaterie", "soc"),
+            ("sensor.battery_state_of_charge", "sensor.axpert_max_battery_state_of_charge", "battery_state_of_charge", "axpert_max_battery_state_of_charge", "voltaj_total_baterie_soc", "baterie_soc", "battery_soc", "bms_soc", "procent_baterie", "procentbaterie", "soc"),
             ("phone", "telefon", "laptop", "tablet"),
             require_solar_context=True,
             exclude_cells=True
@@ -398,7 +409,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # 2. Battery Voltage (V) - STRICT anti-cell filter to eliminate 160+ cell voltage sensors!
         batt_v_cand = _auto_detect_candidate(
             self.hass, "sensor", "voltage", ("V",),
-            ("sensor.battery_voltage", "battery_voltage", "voltaj_total_baterie", "tensiune_total_baterie", "voltaj_baterie", "tensiune_baterie", "batt_volt", "bms_voltage", "total_voltage"),
+            ("sensor.battery_voltage", "sensor.axpert_max_battery_voltage", "battery_voltage", "axpert_max_battery_voltage", "voltaj_total_baterie", "tensiune_total_baterie", "voltaj_baterie", "tensiune_baterie", "batt_volt", "bms_voltage", "total_voltage"),
             ("ac", "grid", "retea", "pv", "mppt"),
             require_solar_context=True,
             exclude_cells=True
@@ -410,7 +421,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # 3. Battery Current (A) - aggregate or total
         batt_c_cand = _auto_detect_candidate(
             self.hass, "sensor", "current", ("A",),
-            ("sensor.battery_current", "battery_current", "curent_total_baterie", "curent_baterie", "batt_current", "bms_current", "total_current"),
+            ("sensor.battery_current", "sensor.axpert_max_battery_current", "battery_current", "axpert_max_battery_current", "curent_total_baterie", "curent_baterie", "batt_current", "bms_current", "total_current"),
             ("ac", "grid", "retea", "pv"),
             require_solar_context=True,
             exclude_cells=True
@@ -422,7 +433,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # 4. Battery Power (W/kW)
         batt_p_cand = _auto_detect_candidate(
             self.hass, "sensor", "power", ("W", "kW"),
-            ("sensor.total_battery_power", "sensor.battery_power", "total_battery_power", "putere_baterie", "battery_power", "batt_power", "bms_power", "puterebaterie"),
+            ("sensor.total_battery_power", "sensor.battery_power", "sensor.battery_power_voltronic", "total_battery_power", "putere_baterie", "battery_power", "battery_power_voltronic", "batt_power", "bms_power", "puterebaterie"),
             ("consum", "load", "pv", "grid", "retea"),
             require_solar_context=True,
             exclude_cells=True
@@ -433,6 +444,100 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="battery",
+            data_schema=vol.Schema(schema_dict),
+            errors=errors,
+        )
+
+    async def async_step_bms(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Step 4b: Home Assistant BMS Packs Configuration."""
+        errors: dict[str, str] = {}
+        bms_count = int(self._collected_data.get(CONF_BMS_COUNT, self._layout.get(CONF_BMS_COUNT, 1)))
+
+        if user_input is not None:
+            self._collected_data.update(user_input)
+            return await self.async_step_grid()
+
+        schema_dict: dict[Any, Any] = {
+            vol.Required(CONF_BMS_COUNT, default=bms_count): vol.In({
+                1: "1 Pachet BMS",
+                2: "2 Pachete BMS",
+                3: "3 Pachete BMS",
+                4: "4 Pachete BMS",
+                5: "5 Pachete BMS",
+                6: "6 Pachete BMS",
+                8: "8 Pachete BMS",
+                10: "10 Pachete BMS",
+            })
+        }
+
+        for p in range(1, bms_count + 1):
+            soc_cand = _auto_detect_candidate(
+                self.hass, "sensor", "battery", ("%",),
+                (f"sensor.bms_{p}_state_of_charge", f"bms_{p}_state_of_charge", f"bms{p}_state_of_charge", f"bms{p}_soc", f"bms_{p}_soc", f"jk_bms_{p}_state_of_charge", f"bms{p} state of charge", "state_of_charge"),
+                ("phone", "tablet", "laptop")
+            )
+            schema_dict[vol.Optional(f"bms_{p}_soc", **({"default": soc_cand} if soc_cand else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="battery")
+            )
+
+            v_cand = _auto_detect_candidate(
+                self.hass, "sensor", "voltage", ("V",),
+                (f"sensor.bms_{p}_total_voltage", f"bms_{p}_total_voltage", f"bms{p}_total_voltage", f"bms{p}_voltage", f"bms_{p}_voltage", f"jk_bms_{p}_total_voltage", f"bms{p} total voltage"),
+                ("cell", "celula", "ac", "grid", "pv")
+            )
+            schema_dict[vol.Optional(f"bms_{p}_voltage", **({"default": v_cand} if v_cand else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+            )
+
+            c_cand = _auto_detect_candidate(
+                self.hass, "sensor", "current", ("A",),
+                (f"sensor.bms_{p}_current", f"bms_{p}_current", f"bms{p}_current", f"jk_bms_{p}_current", f"bms{p} current"),
+                ("ac", "grid", "pv")
+            )
+            schema_dict[vol.Optional(f"bms_{p}_current", **({"default": c_cand} if c_cand else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="current")
+            )
+
+            p_cand = _auto_detect_candidate(
+                self.hass, "sensor", "power", ("W", "kW"),
+                (f"sensor.bms_{p}_power", f"bms_{p}_power", f"bms{p}_power", f"jk_bms_{p}_power", f"bms{p} power"),
+                ("consum", "load", "pv", "grid")
+            )
+            schema_dict[vol.Optional(f"bms_{p}_power", **({"default": p_cand} if p_cand else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            )
+
+            delta_cand = _auto_detect_candidate(
+                self.hass, "sensor", "voltage", ("V", "mV"),
+                (f"sensor.bms_{p}_delta_cell_voltage", f"bms_{p}_delta_cell_voltage", f"bms{p}_delta_cell_voltage", f"bms{p}_delta", f"delta_cell_voltage", f"bms{p} delta cell voltage"),
+                ("ac", "grid", "pv")
+            )
+            schema_dict[vol.Optional(f"bms_{p}_cell_delta", **({"default": delta_cand} if delta_cand else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            )
+
+            t1_cand = _auto_detect_candidate(
+                self.hass, "sensor", "temperature", ("°C",),
+                (f"sensor.bms_{p}_temperature_sensor_1", f"bms{p}_temperature_sensor_1", f"bms{p} temperature sensor 1", f"bms_{p}_temp1"),
+                ("weather", "cpu")
+            )
+            schema_dict[vol.Optional(f"bms_{p}_t1", **({"default": t1_cand} if t1_cand else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            )
+
+            tmos_cand = _auto_detect_candidate(
+                self.hass, "sensor", "temperature", ("°C",),
+                (f"sensor.bms_{p}_mosfet_temperature", f"bms{p}_mosfet_temperature", f"bms{p}_power_tube_temperature", f"bms{p} power tube temperature", f"bms{p} mosfet temperature"),
+                ("weather", "cpu")
+            )
+            schema_dict[vol.Optional(f"bms_{p}_tmos", **({"default": tmos_cand} if tmos_cand else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            )
+
+        return self.async_show_form(
+            step_id="bms",
             data_schema=vol.Schema(schema_dict),
             errors=errors,
         )
@@ -457,6 +562,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_INVERTER_COUNT: inv_count,
                 CONF_MPPT_PER_INVERTER: mppt_count,
                 CONF_HAS_BATTERY: self._layout.get(CONF_HAS_BATTERY, True),
+                CONF_HAS_HA_BMS: self._layout.get(CONF_HAS_HA_BMS, False),
                 CONF_PRESET: self._layout.get(CONF_PRESET, PRESET_SOLAR_ASSISTANT),
                 **self._collected_data,
             }
@@ -474,7 +580,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # 1. Consumption / Load Power
         load_cand = _auto_detect_candidate(
             self.hass, "sensor", "power", ("W", "kW"),
-            ("sensor.total_load_power", "sensor.load_power", "total_load_power", "load_power", "putere_consum", "consum", "house_power", "home_power", "infinisolar_v_x_3_load_power"),
+            ("sensor.total_load_power", "sensor.load_power", "sensor.axpert_max_load_power", "total_load_power", "load_power", "axpert_max_load_power", "putere_consum", "consum", "house_power", "home_power", "infinisolar_v_x_3_load_power"),
             ("solar", "pv", "battery", "baterie")
         )
         schema_dict[vol.Optional(CONF_SENSOR_LOAD_POWER, **({"default": load_cand} if load_cand else {}))] = selector.EntitySelector(
@@ -484,7 +590,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # 2. Grid AC Voltage
         grid_cand = _auto_detect_candidate(
             self.hass, "sensor", "voltage", ("V",),
-            ("sensor.inverter_1_grid_voltage", "sensor.grid_voltage", "inverter_1_grid_voltage", "grid_voltage", "tensiune_retea", "tensiuneacin", "ac_in_voltage", "grid_volt", "infinisolar_v_x_3_grid_voltage"),
+            ("sensor.inverter_1_grid_voltage", "sensor.grid_voltage", "sensor.axpert_max_grid_voltage", "inverter_1_grid_voltage", "grid_voltage", "axpert_max_grid_voltage", "tensiune_retea", "tensiuneacin", "ac_in_voltage", "grid_volt", "infinisolar_v_x_3_grid_voltage"),
             ("battery", "baterie", "pv", "cell")
         )
         schema_dict[vol.Optional(CONF_SENSOR_GRID_VOLT, **({"default": grid_cand} if grid_cand else {}))] = selector.EntitySelector(
@@ -494,7 +600,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # 3. AC Output Voltage
         ac_out_cand = _auto_detect_candidate(
             self.hass, "sensor", "voltage", ("V",),
-            ("sensor.inverter_1_ac_output_voltage", "sensor.ac_output_voltage", "inverter_1_ac_output_voltage", "ac_output_voltage", "output_voltage", "tensiune_ac_out", "tensiuneacout", "inverter_out_voltage"),
+            ("sensor.inverter_1_ac_output_voltage", "sensor.ac_output_voltage", "sensor.axpert_max_ac_output_voltage", "inverter_1_ac_output_voltage", "ac_output_voltage", "axpert_max_ac_output_voltage", "output_voltage", "tensiune_ac_out", "tensiuneacout", "inverter_out_voltage"),
             ("battery", "baterie", "pv", "grid", "retea", "cell")
         )
         schema_dict[vol.Optional(CONF_SENSOR_AC_OUT_VOLT, **({"default": ac_out_cand} if ac_out_cand else {}))] = selector.EntitySelector(
@@ -573,6 +679,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                 6: "6 Invertoare în paralel",
             }),
             vol.Required(CONF_HAS_BATTERY, default=bool(self._val(CONF_HAS_BATTERY, True))): bool,
+            vol.Optional(CONF_HAS_HA_BMS, default=bool(self._val(CONF_HAS_HA_BMS, False))): bool,
         })
 
         return self.async_show_form(step_id="init", data_schema=schema)
@@ -671,6 +778,11 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         """Step 3: Battery & Storage Sensors."""
         if user_input is not None:
             self._collected_data.update(user_input)
+            has_bms = self._collected_data.get(CONF_HAS_HA_BMS)
+            if has_bms is None:
+                has_bms = self._val(CONF_HAS_HA_BMS, False)
+            if has_bms:
+                return await self.async_step_bms()
             return await self.async_step_grid()
 
         schema_dict: dict[Any, Any] = {}
@@ -696,6 +808,70 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
         return self.async_show_form(step_id="battery", data_schema=vol.Schema(schema_dict))
+
+    async def async_step_bms(
+        self, user_input: dict[str, Any] | None = None
+    ) -> Any:
+        """Step 4b: Options for BMS Packs."""
+        bms_count = int(self._collected_data.get(CONF_BMS_COUNT, self._val(CONF_BMS_COUNT, 1)))
+
+        if user_input is not None:
+            self._collected_data.update(user_input)
+            return await self.async_step_grid()
+
+        schema_dict: dict[Any, Any] = {
+            vol.Required(CONF_BMS_COUNT, default=bms_count): vol.In({
+                1: "1 Pachet BMS",
+                2: "2 Pachete BMS",
+                3: "3 Pachete BMS",
+                4: "4 Pachete BMS",
+                5: "5 Pachete BMS",
+                6: "6 Pachete BMS",
+                8: "8 Pachete BMS",
+                10: "10 Pachete BMS",
+            })
+        }
+
+        for p in range(1, bms_count + 1):
+            cur_soc = self._val(f"bms_{p}_soc")
+            schema_dict[vol.Optional(f"bms_{p}_soc", **({"default": cur_soc} if cur_soc else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="battery")
+            )
+
+            cur_v = self._val(f"bms_{p}_voltage")
+            schema_dict[vol.Optional(f"bms_{p}_voltage", **({"default": cur_v} if cur_v else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+            )
+
+            cur_c = self._val(f"bms_{p}_current")
+            schema_dict[vol.Optional(f"bms_{p}_current", **({"default": cur_c} if cur_c else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="current")
+            )
+
+            cur_p = self._val(f"bms_{p}_power")
+            schema_dict[vol.Optional(f"bms_{p}_power", **({"default": cur_p} if cur_p else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            )
+
+            cur_delta = self._val(f"bms_{p}_cell_delta")
+            schema_dict[vol.Optional(f"bms_{p}_cell_delta", **({"default": cur_delta} if cur_delta else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            )
+
+            cur_t1 = self._val(f"bms_{p}_t1")
+            schema_dict[vol.Optional(f"bms_{p}_t1", **({"default": cur_t1} if cur_t1 else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            )
+
+            cur_tmos = self._val(f"bms_{p}_tmos")
+            schema_dict[vol.Optional(f"bms_{p}_tmos", **({"default": cur_tmos} if cur_tmos else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            )
+
+        return self.async_show_form(
+            step_id="bms",
+            data_schema=vol.Schema(schema_dict)
+        )
 
     async def async_step_grid(
         self, user_input: dict[str, Any] | None = None

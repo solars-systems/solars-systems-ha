@@ -1,13 +1,19 @@
 {
   "domain": "solars_systems",
   "name": "Solars Systems",
-  "codeowners": ["@solars-systems"],
+  "codeowners": [
+    "@solars-systems"
+  ],
   "config_flow": true,
   "documentation": "https://solars-systems.eu",
   "integration_type": "hub",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/solars-systems/solars-systems-ha/issues",
-  "requirements": ["aiohttp>=3.8.5"],
-  "dependencies": ["recorder"],
-  "version": "1.0.5"
+  "requirements": [
+    "aiohttp>=3.8.5"
+  ],
+  "dependencies": [
+    "recorder"
+  ],
+  "version": "1.0.6"
 }

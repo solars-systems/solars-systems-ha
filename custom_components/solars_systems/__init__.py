@@ -147,6 +147,50 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception as err:
             _LOGGER.debug("Error sending telemetry to Solars Systems: %s", err)
 
+        # Send BMS telemetry if configured
+        if data.get(CONF_HAS_HA_BMS):
+            bms_count = int(data.get(CONF_BMS_COUNT, 1))
+            bms_packs = []
+            for p in range(1, bms_count + 1):
+                pack_data: dict[str, Any] = {"bms_index": p}
+                v = get_val(f"bms_{p}_voltage")
+                if v is not None:
+                    pack_data["voltage"] = v
+                c = get_val(f"bms_{p}_current")
+                if c is not None:
+                    pack_data["current"] = c
+                pw = get_val(f"bms_{p}_power")
+                if pw is not None:
+                    pack_data["power"] = pw
+                s = get_val(f"bms_{p}_soc")
+                if s is not None:
+                    pack_data["soc"] = s
+                cd = get_val(f"bms_{p}_cell_delta")
+                if cd is not None:
+                    pack_data["cell_delta"] = cd
+                t1 = get_val(f"bms_{p}_t1")
+                if t1 is not None:
+                    pack_data["t1"] = t1
+                tmos = get_val(f"bms_{p}_tmos")
+                if tmos is not None:
+                    pack_data["tmos"] = tmos
+
+                if "voltage" in pack_data or "soc" in pack_data or "current" in pack_data:
+                    bms_packs.append(pack_data)
+
+            if bms_packs:
+                try:
+                    async with session.post(
+                        f"{DEFAULT_API_URL}/bms-telemetry",
+                        json={"macid": inverter_id, "packs": bms_packs},
+                        headers=headers,
+                        timeout=10,
+                    ) as bms_resp:
+                        if bms_resp.status != 200:
+                            _LOGGER.warning("Solars Systems API returned status %s on BMS telemetry", bms_resp.status)
+                except Exception as bms_err:
+                    _LOGGER.debug("Error sending BMS telemetry to Solars Systems: %s", bms_err)
+
     # 2. Historical Import Task
     async def async_run_history_import() -> None:
         """Fetch historical statistics from HA and send to Solars Systems."""

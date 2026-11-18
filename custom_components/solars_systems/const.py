@@ -14,7 +14,11 @@ CONF_PRESET = "system_preset"
 CONF_UPDATE_INTERVAL = "update_interval"
 
 PRESET_SOLAR_ASSISTANT = "solar_assistant"
+PRESET_AXPERT = "axpert"
 PRESET_CUSTOM = "custom"
+
+CONF_HAS_HA_BMS = "has_ha_bms"
+CONF_BMS_COUNT = "bms_count"
 
 CONF_SENSOR_PV_POWER = "sensor_pv_power"
 CONF_SENSOR_LOAD_POWER = "sensor_load_power"
