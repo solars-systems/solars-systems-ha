@@ -15,7 +15,6 @@
           "inverter_id": "Solars Systems Inverter",
           "system_preset": "System Preset",
           "inverter_count": "Number of inverters",
-          "mppt_per_inverter": "MPPT / String count per inverter",
           "has_battery": "System has battery storage?"
         }
       },
@@ -50,6 +49,18 @@
           "history_range": "History range",
           "update_interval": "Live data update interval (seconds)"
         }
+      },
+      "mppt_layout": {
+        "title": "MPPT Count per Inverter",
+        "description": "Select the number of MPPT inputs / strings for each inverter (e.g. 1 for single-string Easun, 2 for dual-MPPT Growatt):",
+        "data": {
+          "mppt_inv_1": "Inverter 1 - MPPT count",
+          "mppt_inv_2": "Inverter 2 - MPPT count",
+          "mppt_inv_3": "Inverter 3 - MPPT count",
+          "mppt_inv_4": "Inverter 4 - MPPT count",
+          "mppt_inv_5": "Inverter 5 - MPPT count",
+          "mppt_inv_6": "Inverter 6 - MPPT count"
+        }
       }
     },
     "error": {
@@ -82,7 +93,6 @@
         "description": "Change the number of inverters, MPPT strings and battery storage presence.",
         "data": {
           "inverter_count": "Number of inverters",
-          "mppt_per_inverter": "MPPT / String count per inverter",
           "has_battery": "System has battery storage?"
         }
       },
@@ -114,6 +124,18 @@
           "sensor_grid_volt": "Grid AC In Voltage (V)",
           "sensor_ac_out_volt": "Inverter AC Out Voltage (V)",
           "update_interval": "Live data update interval (seconds)"
+        }
+      },
+      "mppt_layout": {
+        "title": "MPPT Count per Inverter",
+        "description": "Select the number of MPPT inputs / strings for each inverter (e.g. 1 for single-string Easun, 2 for dual-MPPT Growatt):",
+        "data": {
+          "mppt_inv_1": "Inverter 1 - MPPT count",
+          "mppt_inv_2": "Inverter 2 - MPPT count",
+          "mppt_inv_3": "Inverter 3 - MPPT count",
+          "mppt_inv_4": "Inverter 4 - MPPT count",
+          "mppt_inv_5": "Inverter 5 - MPPT count",
+          "mppt_inv_6": "Inverter 6 - MPPT count"
         }
       }
     }

@@ -199,12 +199,12 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_layout(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Step 2: Configure System Layout (Inverters, MPPT count, Preset, Battery presence)."""
+        """Step 2: Configure System Layout (Inverter selection, count, battery presence)."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
             self._layout = user_input
-            return await self.async_step_solar()
+            return await self.async_step_mppt_layout()
 
         device_options = {
             dev["macid"]: f"{dev.get('name', dev['macid'])} ({dev['macid']})"
@@ -225,18 +225,38 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 5: "5 Invertoare în paralel",
                 6: "6 Invertoare în paralel",
             }),
-            vol.Required(CONF_MPPT_PER_INVERTER, default=2): vol.In({
-                1: "1 MPPT (1 String)",
-                2: "2 MPPT-uri (Dual MPPT)",
-                3: "3 MPPT-uri",
-                4: "4 MPPT-uri",
-            }),
             vol.Required(CONF_HAS_BATTERY, default=True): bool,
         })
 
         return self.async_show_form(
             step_id="layout",
             data_schema=schema,
+            errors=errors,
+        )
+
+    async def async_step_mppt_layout(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Step 2b: Configure MPPT count per Inverter individually."""
+        errors: dict[str, str] = {}
+        inv_count = int(self._layout.get(CONF_INVERTER_COUNT, 1))
+
+        if user_input is not None:
+            self._layout.update(user_input)
+            return await self.async_step_solar()
+
+        schema_dict: dict[Any, Any] = {}
+        for inv in range(1, inv_count + 1):
+            schema_dict[vol.Required(f"mppt_inv_{inv}", default=1)] = vol.In({
+                1: "1 MPPT (1 String)",
+                2: "2 MPPT-uri (Dual MPPT)",
+                3: "3 MPPT-uri",
+                4: "4 MPPT-uri",
+            })
+
+        return self.async_show_form(
+            step_id="mppt_layout",
+            data_schema=vol.Schema(schema_dict),
             errors=errors,
         )
 
@@ -269,7 +289,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # 2. Dynamic MPPT Voltage fields for each inverter
         for inv in range(1, inv_count + 1):
-            for m in range(1, mppt_count + 1):
+            inv_mppt_count = int(self._layout.get(f"mppt_inv_{inv}", 1))
+            for m in range(1, inv_mppt_count + 1):
                 key = f"voltajPV{inv}" if m == 1 else f"voltajPV{inv}_{m}"
                 
                 kw_list = [
@@ -282,7 +303,11 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     f"pv{m}",
                     f"mppt{m}",
                     f"mppt_{m}",
-                    f"growatt_voltaj" if inv == 5 else f"pv{inv}",
+                    f"growatt_vpv{m}",
+                    f"growatt_pv{m}",
+                    f"vpv{m}",
+                    f"growatt_voltaj",
+                    f"pv{inv}",
                 ]
                 
                 cand = _auto_detect_candidate(
@@ -529,7 +554,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         """Step 1: Architecture & Layout Options."""
         if user_input is not None:
             self._collected_data.update(user_input)
-            return await self.async_step_solar()
+            return await self.async_step_mppt_layout()
 
         try:
             cur_inv = int(self._val(CONF_INVERTER_COUNT, 1))
@@ -537,13 +562,6 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
             cur_inv = 1
         if cur_inv not in (1, 2, 3, 4, 5, 6):
             cur_inv = 1
-
-        try:
-            cur_mppt = int(self._val(CONF_MPPT_PER_INVERTER, 2))
-        except (ValueError, TypeError):
-            cur_mppt = 2
-        if cur_mppt not in (1, 2, 3, 4):
-            cur_mppt = 2
 
         schema = vol.Schema({
             vol.Required(CONF_INVERTER_COUNT, default=cur_inv): vol.In({
@@ -554,16 +572,39 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                 5: "5 Invertoare în paralel",
                 6: "6 Invertoare în paralel",
             }),
-            vol.Required(CONF_MPPT_PER_INVERTER, default=cur_mppt): vol.In({
-                1: "1 MPPT (1 String)",
-                2: "2 MPPT-uri (Dual MPPT)",
-                3: "3 MPPT-uri",
-                4: "4 MPPT-uri",
-            }),
             vol.Required(CONF_HAS_BATTERY, default=bool(self._val(CONF_HAS_BATTERY, True))): bool,
         })
 
         return self.async_show_form(step_id="init", data_schema=schema)
+
+    async def async_step_mppt_layout(
+        self, user_input: dict[str, Any] | None = None
+    ) -> Any:
+        """Step 1b: Architecture & MPPT count per Inverter."""
+        inv_count = int(self._collected_data.get(CONF_INVERTER_COUNT, self._val(CONF_INVERTER_COUNT, 1)))
+
+        if user_input is not None:
+            self._collected_data.update(user_input)
+            return await self.async_step_solar()
+
+        schema_dict: dict[Any, Any] = {}
+        for inv in range(1, inv_count + 1):
+            cur_mppt = 1
+            try:
+                cur_mppt = int(self._val(f"mppt_inv_{inv}", 1))
+            except (ValueError, TypeError):
+                cur_mppt = 1
+            if cur_mppt not in (1, 2, 3, 4):
+                cur_mppt = 1
+
+            schema_dict[vol.Required(f"mppt_inv_{inv}", default=cur_mppt)] = vol.In({
+                1: "1 MPPT (1 String)",
+                2: "2 MPPT-uri (Dual MPPT)",
+                3: "3 MPPT-uri",
+                4: "4 MPPT-uri",
+            })
+
+        return self.async_show_form(step_id="mppt_layout", data_schema=vol.Schema(schema_dict))
 
     async def async_step_solar(
         self, user_input: dict[str, Any] | None = None
@@ -571,12 +612,12 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         """Step 2: Solar PV Panels & Energy Production."""
         if user_input is not None:
             self._collected_data.update(user_input)
-            if self._val(CONF_HAS_BATTERY, True):
+            has_batt = self._collected_data.get(CONF_HAS_BATTERY, self._val(CONF_HAS_BATTERY, True))
+            if has_batt:
                 return await self.async_step_battery()
             return await self.async_step_grid()
 
-        inv_count = int(self._val(CONF_INVERTER_COUNT, 1))
-        mppt_count = int(self._val(CONF_MPPT_PER_INVERTER, 2))
+        inv_count = int(self._collected_data.get(CONF_INVERTER_COUNT, self._val(CONF_INVERTER_COUNT, 1)))
 
         schema_dict: dict[Any, Any] = {}
 
@@ -589,7 +630,8 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
 
         # 2. Dynamic MPPT Voltages and Inverter Powers
         for inv in range(1, inv_count + 1):
-            for m in range(1, mppt_count + 1):
+            inv_mppt_count = int(self._collected_data.get(f"mppt_inv_{inv}", self._val(f"mppt_inv_{inv}", 1)))
+            for m in range(1, inv_mppt_count + 1):
                 key = f"voltajPV{inv}" if m == 1 else f"voltajPV{inv}_{m}"
                 cur_v = self._val(key)
                 f_opts = {"default": cur_v} if cur_v else {}
@@ -661,7 +703,8 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         """Step 4: Grid, Consumption & Update Interval."""
         if user_input is not None:
             self._collected_data.update(user_input)
-            return self.async_create_entry(data=self._collected_data)
+            final_options = {**dict(self.config_entry.data), **dict(self.config_entry.options), **self._collected_data}
+            return self.async_create_entry(data=final_options)
 
         schema_dict: dict[Any, Any] = {}
 

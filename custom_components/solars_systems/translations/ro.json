@@ -15,7 +15,6 @@
           "inverter_id": "Invertor Solars Systems",
           "system_preset": "Tip Sistem / Preset",
           "inverter_count": "Număr de invertoare în locație",
-          "mppt_per_inverter": "Număr de MPPT-uri / Stringuri per invertor",
           "has_battery": "Sistemul include baterie de stocare?"
         }
       },
@@ -50,6 +49,18 @@
           "history_range": "Interval istoric",
           "update_interval": "Interval trimitere date live (secunde)"
         }
+      },
+      "mppt_layout": {
+        "title": "Număr MPPT-uri per Invertor",
+        "description": "Selectați numărul de intrări MPPT / stringuri pentru fiecare invertor în parte (ex: 1 pentru Easun/monostring, 2 pentru Growatt/dual-MPPT):",
+        "data": {
+          "mppt_inv_1": "Invertor 1 - Număr MPPT-uri",
+          "mppt_inv_2": "Invertor 2 - Număr MPPT-uri",
+          "mppt_inv_3": "Invertor 3 - Număr MPPT-uri",
+          "mppt_inv_4": "Invertor 4 - Număr MPPT-uri",
+          "mppt_inv_5": "Invertor 5 - Număr MPPT-uri",
+          "mppt_inv_6": "Invertor 6 - Număr MPPT-uri"
+        }
       }
     },
     "error": {
@@ -82,7 +93,6 @@
         "description": "Modificați numărul de invertoare, MPPT-uri și prezența bateriei.",
         "data": {
           "inverter_count": "Număr de invertoare în locație",
-          "mppt_per_inverter": "Număr de MPPT-uri / Stringuri per invertor",
           "has_battery": "Sistemul include baterie de stocare?"
         }
       },
@@ -114,6 +124,18 @@
           "sensor_grid_volt": "Tensiune Rețea AC In (V)",
           "sensor_ac_out_volt": "Tensiune Ieșire Invertor AC Out (V)",
           "update_interval": "Interval trimitere date live (secunde)"
+        }
+      },
+      "mppt_layout": {
+        "title": "Număr MPPT-uri per Invertor",
+        "description": "Selectați numărul de intrări MPPT / stringuri pentru fiecare invertor în parte (ex: 1 pentru Easun/monostring, 2 pentru Growatt/dual-MPPT):",
+        "data": {
+          "mppt_inv_1": "Invertor 1 - Număr MPPT-uri",
+          "mppt_inv_2": "Invertor 2 - Număr MPPT-uri",
+          "mppt_inv_3": "Invertor 3 - Număr MPPT-uri",
+          "mppt_inv_4": "Invertor 4 - Număr MPPT-uri",
+          "mppt_inv_5": "Invertor 5 - Număr MPPT-uri",
+          "mppt_inv_6": "Invertor 6 - Număr MPPT-uri"
         }
       }
     }
