@@ -442,6 +442,10 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     title = f"Solars - {dev.get('name', dev.get('macid'))}"
                     break
 
+            if self.context.get("source") == config_entries.SOURCE_RECONFIGURE:
+                entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+                return self.async_update_reload_and_abort(entry, data=final_data)
+
             return self.async_create_entry(title=title, data=final_data)
 
         schema_dict: dict[Any, Any] = {}
@@ -499,3 +503,189 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(schema_dict),
             errors=errors,
         )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Create the options flow."""
+        return SolarsSystemsOptionsFlowHandler(config_entry)
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Handle re-configuration request from Home Assistant UI."""
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        self._api_key = entry.data[CONF_API_KEY]
+        self._layout = {
+            CONF_INVERTER_ID: entry.data[CONF_INVERTER_ID],
+            CONF_INVERTER_COUNT: entry.data.get(CONF_INVERTER_COUNT, 1),
+            CONF_MPPT_PER_INVERTER: entry.data.get(CONF_MPPT_PER_INVERTER, 2),
+            CONF_HAS_BATTERY: entry.data.get(CONF_HAS_BATTERY, True),
+            CONF_PRESET: entry.data.get(CONF_PRESET, PRESET_SOLAR_ASSISTANT),
+        }
+        return await self.async_step_layout()
+
+
+class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options flow for modifying mapped sensors and settings without reinstalling."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+        self._combined: dict[str, Any] = {**dict(config_entry.data), **dict(config_entry.options)}
+        self._collected_data: dict[str, Any] = {}
+
+    def _val(self, key: str, default: Any = None) -> Any:
+        return self._combined.get(key, default)
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Step 1: Architecture & Layout Options."""
+        if user_input is not None:
+            self._combined.update(user_input)
+            return await self.async_step_solar()
+
+        schema = vol.Schema({
+            vol.Required(CONF_INVERTER_COUNT, default=self._val(CONF_INVERTER_COUNT, 1)): vol.In({
+                1: "1 Invertor (Standard)",
+                2: "2 Invertoare în paralel",
+                3: "3 Invertoare în paralel",
+                4: "4 Invertoare în paralel",
+                5: "5 Invertoare în paralel",
+                6: "6 Invertoare în paralel",
+            }),
+            vol.Required(CONF_MPPT_PER_INVERTER, default=self._val(CONF_MPPT_PER_INVERTER, 2)): vol.In({
+                1: "1 MPPT (1 String)",
+                2: "2 MPPT-uri (Dual MPPT)",
+                3: "3 MPPT-uri",
+                4: "4 MPPT-uri",
+            }),
+            vol.Required(CONF_HAS_BATTERY, default=self._val(CONF_HAS_BATTERY, True)): bool,
+        })
+
+        return self.async_show_form(step_id="init", data_schema=schema)
+
+    async def async_step_solar(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Step 2: Solar PV Panels & Energy Production."""
+        if user_input is not None:
+            self._collected_data.update(user_input)
+            if self._val(CONF_HAS_BATTERY, True):
+                return await self.async_step_battery()
+            return await self.async_step_grid()
+
+        inv_count = int(self._val(CONF_INVERTER_COUNT, 1))
+        mppt_count = int(self._val(CONF_MPPT_PER_INVERTER, 2))
+
+        schema_dict: dict[Any, Any] = {}
+
+        # 1. Total Solar Power
+        cur_pv = self._val(CONF_SENSOR_PV_POWER)
+        pv_opts = {"default": cur_pv} if cur_pv else {}
+        schema_dict[vol.Optional(CONF_SENSOR_PV_POWER, **pv_opts)] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+        )
+
+        # 2. Dynamic MPPT Voltages and Inverter Powers
+        for inv in range(1, inv_count + 1):
+            for m in range(1, mppt_count + 1):
+                key = f"voltajPV{inv}" if m == 1 else f"voltajPV{inv}_{m}"
+                cur_v = self._val(key)
+                f_opts = {"default": cur_v} if cur_v else {}
+                schema_dict[vol.Optional(key, **f_opts)] = selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+                )
+
+            if inv_count > 1:
+                p_key = f"puterePV{inv}"
+                cur_p = self._val(p_key)
+                p_opts = {"default": cur_p} if cur_p else {}
+                schema_dict[vol.Optional(p_key, **p_opts)] = selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                )
+
+        # 3. Energy Production Sensors
+        cur_e_today = self._val(CONF_SENSOR_ENERGY_TODAY)
+        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_TODAY, **({"default": cur_e_today} if cur_e_today else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+        )
+
+        cur_e_month = self._val(CONF_SENSOR_ENERGY_MONTH)
+        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_MONTH, **({"default": cur_e_month} if cur_e_month else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+        )
+
+        cur_e_year = self._val(CONF_SENSOR_ENERGY_YEAR)
+        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_YEAR, **({"default": cur_e_year} if cur_e_year else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+        )
+
+        return self.async_show_form(step_id="solar", data_schema=vol.Schema(schema_dict))
+
+    async def async_step_battery(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Step 3: Battery & Storage Sensors."""
+        if user_input is not None:
+            self._collected_data.update(user_input)
+            return await self.async_step_grid()
+
+        schema_dict: dict[Any, Any] = {}
+
+        cur_soc = self._val(CONF_SENSOR_BATT_SOC)
+        schema_dict[vol.Optional(CONF_SENSOR_BATT_SOC, **({"default": cur_soc} if cur_soc else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="battery")
+        )
+
+        cur_volt = self._val(CONF_SENSOR_BATT_VOLT)
+        schema_dict[vol.Optional(CONF_SENSOR_BATT_VOLT, **({"default": cur_volt} if cur_volt else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+        )
+
+        cur_curr = self._val(CONF_SENSOR_BATT_CURR)
+        schema_dict[vol.Optional(CONF_SENSOR_BATT_CURR, **({"default": cur_curr} if cur_curr else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="current")
+        )
+
+        cur_pow = self._val(CONF_SENSOR_BATT_POWER)
+        schema_dict[vol.Optional(CONF_SENSOR_BATT_POWER, **({"default": cur_pow} if cur_pow else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+        )
+
+        return self.async_show_form(step_id="battery", data_schema=vol.Schema(schema_dict))
+
+    async def async_step_grid(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Step 4: Grid, Consumption & Update Interval."""
+        if user_input is not None:
+            self._collected_data.update(user_input)
+            final_options = {**self._combined, **self._collected_data}
+            return self.async_create_entry(title="", data=final_options)
+
+        schema_dict: dict[Any, Any] = {}
+
+        cur_load = self._val(CONF_SENSOR_LOAD_POWER)
+        schema_dict[vol.Optional(CONF_SENSOR_LOAD_POWER, **({"default": cur_load} if cur_load else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+        )
+
+        cur_grid = self._val(CONF_SENSOR_GRID_VOLT)
+        schema_dict[vol.Optional(CONF_SENSOR_GRID_VOLT, **({"default": cur_grid} if cur_grid else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+        )
+
+        cur_ac_out = self._val(CONF_SENSOR_AC_OUT_VOLT)
+        schema_dict[vol.Optional(CONF_SENSOR_AC_OUT_VOLT, **({"default": cur_ac_out} if cur_ac_out else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+        )
+
+        schema_dict[vol.Optional(CONF_UPDATE_INTERVAL, default=self._val(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL))] = vol.All(
+            vol.Coerce(int), vol.Range(min=10, max=300)
+        )
+
+        return self.async_show_form(step_id="grid", data_schema=vol.Schema(schema_dict))

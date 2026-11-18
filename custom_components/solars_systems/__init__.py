@@ -53,7 +53,7 @@ def _safe_float(val: Any) -> float | None:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Solars Systems from a config entry."""
-    data = entry.data
+    data = {**entry.data, **entry.options}
     api_key = data[CONF_API_KEY]
     inverter_id = data[CONF_INVERTER_ID]
     update_interval = data.get(CONF_UPDATE_INTERVAL, 30)
@@ -264,12 +264,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "cancel_timer": cancel_timer,
     }
 
+    entry.async_on_unload(entry.add_update_listener(update_listener))
+
     hass.async_create_task(async_send_telemetry())
 
     if data.get(CONF_IMPORT_HISTORY, True):
         hass.async_create_task(async_run_history_import())
 
     return True
+
+
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

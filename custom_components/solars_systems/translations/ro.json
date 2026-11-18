@@ -74,5 +74,48 @@
         "custom": "Personalizat / Alte sisteme (Deye, Growatt, Huawei, Victron)"
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Arhitectură Instalație Solară",
+        "description": "Modificați numărul de invertoare, MPPT-uri și prezența bateriei.",
+        "data": {
+          "inverter_count": "Număr de invertoare în locație",
+          "mppt_per_inverter": "Număr de MPPT-uri / Stringuri per invertor",
+          "has_battery": "Sistemul include baterie de stocare?"
+        }
+      },
+      "solar": {
+        "title": "Panouri Solare & Producție (PV)",
+        "description": "Ajustați senzorii de putere panouri, tensiuni MPPT și producție de energie.",
+        "data": {
+          "sensor_pv_power": "Putere Totală Solară (W/kW)",
+          "sensor_energy_today": "Producție Energie Zilnică (kWh)",
+          "sensor_energy_month": "Producție Energie Lunară (kWh)",
+          "sensor_energy_year": "Producție Energie Anuală (kWh)"
+        }
+      },
+      "battery": {
+        "title": "Baterie & Stocare",
+        "description": "Ajustați senzorii principali ai bateriei (SOC, tensiune, curent, putere).",
+        "data": {
+          "sensor_batt_soc": "Nivel Baterie SOC (%)",
+          "sensor_batt_volt": "Tensiune Pachet Baterie (V)",
+          "sensor_batt_curr": "Curent Baterie (A)",
+          "sensor_batt_power": "Putere Baterie (W/kW)"
+        }
+      },
+      "grid": {
+        "title": "Rețea, Consum Casă & Setări",
+        "description": "Ajustați senzorii de consum, tensiune rețea și intervalul de raportare live.",
+        "data": {
+          "sensor_load_power": "Consum Casă (W/kW)",
+          "sensor_grid_volt": "Tensiune Rețea AC In (V)",
+          "sensor_ac_out_volt": "Tensiune Ieșire Invertor AC Out (V)",
+          "update_interval": "Interval trimitere date live (secunde)"
+        }
+      }
+    }
   }
 }

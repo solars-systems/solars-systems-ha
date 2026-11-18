@@ -74,5 +74,48 @@
         "custom": "Custom / Other systems (Deye, Growatt, Huawei, Victron)"
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Solar Installation Architecture",
+        "description": "Change the number of inverters, MPPT strings and battery storage presence.",
+        "data": {
+          "inverter_count": "Number of inverters",
+          "mppt_per_inverter": "MPPT / String count per inverter",
+          "has_battery": "System has battery storage?"
+        }
+      },
+      "solar": {
+        "title": "Solar PV Panels & Production",
+        "description": "Adjust solar PV power, MPPT string voltages, and energy yield sensors.",
+        "data": {
+          "sensor_pv_power": "Total Solar Power (W/kW)",
+          "sensor_energy_today": "Daily Energy Production (kWh)",
+          "sensor_energy_month": "Monthly Energy Production (kWh)",
+          "sensor_energy_year": "Yearly Energy Production (kWh)"
+        }
+      },
+      "battery": {
+        "title": "Battery & Storage",
+        "description": "Adjust battery pack sensors (SOC, voltage, current, power).",
+        "data": {
+          "sensor_batt_soc": "Battery Level SOC (%)",
+          "sensor_batt_volt": "Battery Pack Voltage (V)",
+          "sensor_batt_curr": "Battery Current (A)",
+          "sensor_batt_power": "Battery Power (W/kW)"
+        }
+      },
+      "grid": {
+        "title": "Grid, Load Consumption & Settings",
+        "description": "Adjust house load power, grid AC voltages, and live update interval.",
+        "data": {
+          "sensor_load_power": "House Load Power (W/kW)",
+          "sensor_grid_volt": "Grid AC In Voltage (V)",
+          "sensor_ac_out_volt": "Inverter AC Out Voltage (V)",
+          "update_interval": "Live data update interval (seconds)"
+        }
+      }
+    }
   }
 }
