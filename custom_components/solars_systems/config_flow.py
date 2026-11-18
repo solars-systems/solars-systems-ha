@@ -442,10 +442,6 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     title = f"Solars - {dev.get('name', dev.get('macid'))}"
                     break
 
-            if self.context.get("source") == config_entries.SOURCE_RECONFIGURE:
-                entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
-                return self.async_update_reload_and_abort(entry, data=final_data)
-
             return self.async_create_entry(title=title, data=final_data)
 
         schema_dict: dict[Any, Any] = {}
@@ -508,48 +504,49 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
-    ) -> config_entries.OptionsFlow:
+    ) -> SolarsSystemsOptionsFlowHandler:
         """Create the options flow."""
-        return SolarsSystemsOptionsFlowHandler(config_entry)
-
-    async def async_step_reconfigure(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
-        """Handle re-configuration request from Home Assistant UI."""
-        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
-        self._api_key = entry.data[CONF_API_KEY]
-        self._layout = {
-            CONF_INVERTER_ID: entry.data[CONF_INVERTER_ID],
-            CONF_INVERTER_COUNT: entry.data.get(CONF_INVERTER_COUNT, 1),
-            CONF_MPPT_PER_INVERTER: entry.data.get(CONF_MPPT_PER_INVERTER, 2),
-            CONF_HAS_BATTERY: entry.data.get(CONF_HAS_BATTERY, True),
-            CONF_PRESET: entry.data.get(CONF_PRESET, PRESET_SOLAR_ASSISTANT),
-        }
-        return await self.async_step_layout()
+        return SolarsSystemsOptionsFlowHandler()
 
 
 class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for modifying mapped sensors and settings without reinstalling."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+    def __init__(self) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
-        self._combined: dict[str, Any] = {**dict(config_entry.data), **dict(config_entry.options)}
+        super().__init__()
         self._collected_data: dict[str, Any] = {}
 
     def _val(self, key: str, default: Any = None) -> Any:
-        return self._combined.get(key, default)
+        combined = {}
+        if hasattr(self, "config_entry") and self.config_entry:
+            combined = {**dict(self.config_entry.data), **dict(self.config_entry.options)}
+        return combined.get(key, default)
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
+    ) -> Any:
         """Step 1: Architecture & Layout Options."""
         if user_input is not None:
-            self._combined.update(user_input)
+            self._collected_data.update(user_input)
             return await self.async_step_solar()
 
+        try:
+            cur_inv = int(self._val(CONF_INVERTER_COUNT, 1))
+        except (ValueError, TypeError):
+            cur_inv = 1
+        if cur_inv not in (1, 2, 3, 4, 5, 6):
+            cur_inv = 1
+
+        try:
+            cur_mppt = int(self._val(CONF_MPPT_PER_INVERTER, 2))
+        except (ValueError, TypeError):
+            cur_mppt = 2
+        if cur_mppt not in (1, 2, 3, 4):
+            cur_mppt = 2
+
         schema = vol.Schema({
-            vol.Required(CONF_INVERTER_COUNT, default=self._val(CONF_INVERTER_COUNT, 1)): vol.In({
+            vol.Required(CONF_INVERTER_COUNT, default=cur_inv): vol.In({
                 1: "1 Invertor (Standard)",
                 2: "2 Invertoare în paralel",
                 3: "3 Invertoare în paralel",
@@ -557,20 +554,20 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                 5: "5 Invertoare în paralel",
                 6: "6 Invertoare în paralel",
             }),
-            vol.Required(CONF_MPPT_PER_INVERTER, default=self._val(CONF_MPPT_PER_INVERTER, 2)): vol.In({
+            vol.Required(CONF_MPPT_PER_INVERTER, default=cur_mppt): vol.In({
                 1: "1 MPPT (1 String)",
                 2: "2 MPPT-uri (Dual MPPT)",
                 3: "3 MPPT-uri",
                 4: "4 MPPT-uri",
             }),
-            vol.Required(CONF_HAS_BATTERY, default=self._val(CONF_HAS_BATTERY, True)): bool,
+            vol.Required(CONF_HAS_BATTERY, default=bool(self._val(CONF_HAS_BATTERY, True))): bool,
         })
 
         return self.async_show_form(step_id="init", data_schema=schema)
 
     async def async_step_solar(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
+    ) -> Any:
         """Step 2: Solar PV Panels & Energy Production."""
         if user_input is not None:
             self._collected_data.update(user_input)
@@ -628,7 +625,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_battery(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
+    ) -> Any:
         """Step 3: Battery & Storage Sensors."""
         if user_input is not None:
             self._collected_data.update(user_input)
@@ -660,12 +657,11 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_grid(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
+    ) -> Any:
         """Step 4: Grid, Consumption & Update Interval."""
         if user_input is not None:
             self._collected_data.update(user_input)
-            final_options = {**self._combined, **self._collected_data}
-            return self.async_create_entry(title="", data=final_options)
+            return self.async_create_entry(data=self._collected_data)
 
         schema_dict: dict[Any, Any] = {}
 
