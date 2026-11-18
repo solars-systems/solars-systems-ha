@@ -45,7 +45,7 @@ Permite proprietarilor de sisteme fotovoltaice (SolarAssistant, Deye, Huawei, Gr
 3. Mergeți la **Settings** -> **Devices & Services** -> **Add Integration**, căutați **Solars Systems** și urmați pașii din asistentul de configurare.
 
 > 📖 **Aveți nevoie de ajutor sau instrucțiuni detaliate?**  
-> Consultați [**Ghidul Detaliat de Instalare și Configurare (INSTALLATION.md)**](INSTALLATION.md) pentru pași amănunțiți, configurarea senzorilor, instalarea manuală și depanare.
+> Consultați [**Ghidul Detaliat de Instalare și Configurare (INSTALLATION.ro.md)**](INSTALLATION.ro.md) pentru pași amănunțiți, configurarea senzorilor, instalarea manuală și depanare.
 
 ---
 
