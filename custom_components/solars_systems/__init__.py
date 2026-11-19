@@ -79,6 +79,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return None
             return _safe_float(state.state)
 
+        def get_bool_val(key: str) -> bool | None:
+            entity_id = data.get(key)
+            if not entity_id:
+                return None
+            state = hass.states.get(entity_id)
+            if not state or state.state in ("unknown", "unavailable", None):
+                return None
+            return str(state.state).lower() in ("on", "true", "1", "open", "active")
+
         # Dynamic MPPT Voltages and Inverter Powers (voltajPV1, voltajPV1_2, puterePV1...)
         for k, entity_id in data.items():
             if isinstance(k, str) and (k.startswith("voltajPV") or k.startswith("puterePV")):
@@ -168,14 +177,54 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 cd = get_val(f"bms_{p}_cell_delta")
                 if cd is not None:
                     pack_data["cell_delta"] = cd
+                cmin = get_val(f"bms_{p}_cell_min")
+                if cmin is not None:
+                    pack_data["cell_min"] = cmin
+                cmax = get_val(f"bms_{p}_cell_max")
+                if cmax is not None:
+                    pack_data["cell_max"] = cmax
+
+                # Temperatures
                 t1 = get_val(f"bms_{p}_t1")
                 if t1 is not None:
                     pack_data["t1"] = t1
+                t2 = get_val(f"bms_{p}_t2")
+                if t2 is not None:
+                    pack_data["t2"] = t2
                 tmos = get_val(f"bms_{p}_tmos")
                 if tmos is not None:
                     pack_data["tmos"] = tmos
 
-                if "voltage" in pack_data or "soc" in pack_data or "current" in pack_data:
+                # Switches / binary states
+                chg = get_bool_val(f"bms_{p}_charging")
+                if chg is not None:
+                    pack_data["charge"] = chg
+                dis = get_bool_val(f"bms_{p}_discharging")
+                if dis is not None:
+                    pack_data["discharge"] = dis
+                bal = get_bool_val(f"bms_{p}_balancing")
+                if bal is not None:
+                    pack_data["balance"] = bal
+                heat = get_bool_val(f"bms_{p}_heating")
+                if heat is not None:
+                    pack_data["heating"] = heat
+
+                # Cells 1 to 16
+                cells = []
+                for cell_idx in range(1, 17):
+                    cv = get_val(f"bms_{p}_cell_{cell_idx}")
+                    if cv is not None:
+                        cells.append(cv)
+                if cells:
+                    pack_data["cells"] = cells
+                    if "cell_min" not in pack_data:
+                        pack_data["cell_min"] = min(cells)
+                    if "cell_max" not in pack_data:
+                        pack_data["cell_max"] = max(cells)
+                    if "cell_delta" not in pack_data:
+                        pack_data["cell_delta"] = round(max(cells) - min(cells), 3)
+
+                if "voltage" in pack_data or "soc" in pack_data or "current" in pack_data or cells:
                     bms_packs.append(pack_data)
 
             if bms_packs:
