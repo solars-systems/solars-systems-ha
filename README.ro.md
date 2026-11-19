@@ -8,7 +8,7 @@
 
 Integrarea oficială Home Assistant pentru platforma [Solars Systems](https://solars-systems.eu).
 
-Permite proprietarilor de sisteme fotovoltaice (SolarAssistant, Deye, Huawei, Growatt, Victron, Fronius, Sungrow, Infinisolar etc.) care utilizează Home Assistant să transmită telemetria în timp real și să sincronizeze istoricul complet de producție direct în platforma **Solars Systems**.
+Permite proprietarilor de sisteme fotovoltaice (SolarAssistant, Deye, Huawei, Growatt, Victron, Fronius, Sungrow, Infinisolar, Axpert, Easun etc.) care utilizează Home Assistant să transmită telemetria în timp real și să sincronizeze istoricul complet de producție direct în platforma **Solars Systems**.
 
 ---
 
@@ -16,16 +16,25 @@ Permite proprietarilor de sisteme fotovoltaice (SolarAssistant, Deye, Huawei, Gr
 
 * **📡 Telemetrie în Timp Real:**
   * Putere fotovoltaică totală (W / kW) și putere defalcată per invertor / MPPT
-  * Tensiuni individuale per MPPT / String (`voltajPV1`, `voltajPV1_2`, `voltajPV2`, etc.)
+  * Tensiuni individuale per MPPT / String (`voltajPV1`, `voltajPV1_2`, `voltajPV2`, `voltajPV5_2`, etc.)
   * Consum locuință / Sarcină (W / kW)
   * Monitorizare completă baterie: Nivel (SoC %), Tensiune (V), Curent (A) și Putere încărcare/descărcare (W)
   * Tensiuni rețea: Tensiune intrare AC In (Grid) și tensiune ieșire invertor AC Out (Inverter Output)
   * Energie produsă: Zilnică (zi), Lunară (lună) și Anuală (an) în kWh
-* **⚡ Preset SolarAssistant & Arhitectură Flexibilă:**
-  * **Detectare Automată SolarAssistant:** Recunoaște instant senzorii standard creați de SolarAssistant
-  * **Filtru Inteligent Anti-Celule:** Exclude automat sutele de celule individuale ale BMS-urilor (`cell_1`..`cell_24`), păstrând listele dropdown curate
+* **🔋 Monitorizare Avansată Pachete BMS & Celule (JK-BMS, Daly, Seplos, JBD, ESPHome etc.):**
+  * **Suport Multi-Pachet:** Configurare simultană de la 1 la 10 pachete de baterii BMS
+  * **Auto-Populare Celule 1 - 16:** Detectează și mapează automat toți senzorii de celule individuale (`cell_1` .. `cell_16`) în doar câteva secunde
+  * **Analiză Celule:** Urmărire în timp real a celei mai mici celule (`cell_min`), celei mai mari celule (`cell_max`) și a diferenței dintre celule (`cell_delta`)
+  * **Temperaturi:** Până la 2 sonde de temperatură baterie (`t1`, `t2`) și temperatura tranzistorilor de putere MOSFET / Tube (`tmos`)
+  * **Comutatoare și Stări:** Monitorizare stări Încărcare (Charging), Descărcare (Discharging), Balansare (Balancing) și Încălzire (Heating)
+* **⚡ Preseturi Inteligente & Arhitectură Flexibilă:**
+  * **Preseturi Disponibile:** **SolarAssistant (Auto-Detectare)**, **Axpert / Voltronic / Easun** și **Personalizat / Custom** (Deye, Growatt, Huawei, Victron etc.)
+  * **Filtru Inteligent Anti-Celule:** Exclude automat sutele de senzori de celule individuale în pașii de invertor și baterie principală, păstrând listele curate
   * **Protecție Pompe de Căldură & Tablete:** Filtre avansate care împiedică asocierea eronată a pompelor de căldură, climatizării sau tabletelor de perete
   * Suportă de la 1 la 6 invertoare în paralel / cascadă și între 1 și 4 intrări MPPT per invertor
+* **🌐 Experiență Bilingvă Nativă (RO / EN):**
+  * Se adaptează automat la limba setată în Home Assistant (100% Română sau 100% Engleză)
+  * Meniuri dropdown bilingve clare în asistentul de configurare
 * **📊 Import Istoric Inteligent (Monotonic Upsert):**
   * Extrage automat datele istorice de energie (kWh/zi) din statisticile Home Assistant (30 zile, 90 zile, 1 an sau tot istoricul)
   * **Idempotent:** Nu suprascrie niciodată date bune existente cu valori mai mici; dacă o zi există deja, o actualizează doar dacă noua valoare din Home Assistant este mai mare

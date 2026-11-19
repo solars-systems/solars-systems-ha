@@ -2,38 +2,38 @@
 
 # Ghid Detaliat de Instalare și Configurare
 
-Acest ghid vă oferă toți pașii necesari pentru instalarea și configurarea integrării **Solars Systems** în Home Assistant.
+Acest ghid oferă toți pașii necesari pentru instalarea, configurarea și personalizarea integrării **Solars Systems** în Home Assistant.
 
 ---
 
-## 📋 Cerințe Prealabile
+## 📋 Cerințe Preliminare
 
 1. **Cont Solars Systems:** Un cont activ pe [solars-systems.eu](https://solars-systems.eu) cu cel puțin un invertor înregistrat.
 2. **Cheie API:** Generată din platforma Solars Systems:
-   * Autentificați-vă pe [solars-systems.eu](https://solars-systems.eu)
-   * Mergeți în meniu la secțiunea **Chei API** (sau Profil -> Chei API)
-   * Copiați cheia generată (un șir unic de caractere).
-3. **Senzori funcționali în Home Assistant:** Asigurați-vă că aveți deja senzorii invertorului/bateriei disponibili în Home Assistant (din integrări precum SolarAssistant, Huawei Solar, Solarman, Deye Modbus, Fronius, Victron, MQTT etc.).
+   * Conectați-vă pe [solars-systems.eu](https://solars-systems.eu)
+   * Mergeți la secțiunea **Chei API** (sau Profil -> Chei API)
+   * Copiați cheia generată (un token unic securizat).
+3. **Senzori Funcționali în Home Assistant:** Asigurați-vă că senzorii invertorului, ai bateriei sau ai BMS-ului sunt deja funcționali în Home Assistant (ex: din SolarAssistant, Huawei Solar, Solarman, Deye Modbus, Fronius, Victron, ESPHome, JK-BMS, Daly, MQTT etc.).
 
 ---
 
-## 🚀 Metoda 1: Instalare prin HACS (Recomandat)
+## 🚀 Metoda 1: Instalare prin HACS (Recomandată)
 
 Dacă aveți [HACS (Home Assistant Community Store)](https://hacs.xyz/) instalat:
 
-1. Deschideți **HACS** din meniul lateral al Home Assistant.
-2. Navigați la secțiunea **Integrations**.
-3. În colțul din dreapta sus, apăsați pe meniul cu trei puncte (`⋮`) și alegeți **Custom repositories** (Depozite personalizate).
-4. Completați câmpurile:
-   * **Repository (Depozit):**
+1. Deschideți **HACS** din bara laterală Home Assistant.
+2. Accesați secțiunea **Integrations**.
+3. În colțul din dreapta sus, apăsați pe meniul cu trei puncte (`⋮`) și selectați **Custom repositories**.
+4. Completați:
+   * **Repository:**
      ```text
      https://github.com/solars-systems/solars-systems-ha
      ```
-   * **Type (Categorie):** `Integration`
-5. Apăsați **Add** (Adăugare).
-6. Căutați integrarea **Solars Systems** în lista HACS, apăsați pe ea, apoi apăsați **Download** (Descărcare) în colțul din dreapta jos.
+   * **Tip / Categorie:** `Integration`
+5. Apăsați pe **Add**.
+6. Găsiți integrarea **Solars Systems** în lista HACS, apăsați pe ea și dați **Download** în colțul din dreapta jos.
 7. **Reporniți Home Assistant:**
-   * Mergeți la **Developer Tools** -> fila **YAML** (sau butonul Restart) -> **Restart Home Assistant**.
+   * Mergeți la **Developer Tools** -> apăsați **Restart Home Assistant**.
 
 ---
 
@@ -41,10 +41,10 @@ Dacă aveți [HACS (Home Assistant Community Store)](https://hacs.xyz/) instalat
 
 Dacă nu utilizați HACS:
 
-1. Descărcați codul sursă de pe GitHub: [solars-systems-ha Releases](https://github.com/solars-systems/solars-systems-ha/releases) sau descărcați arhiva ZIP a repository-ului.
-2. Dezarhivați fișierul.
-3. Copiați întregul director `custom_components/solars_systems` în folderul `config/custom_components/` al instalării dumneavoastră Home Assistant.
-   * Structura căilor trebuie să fie:
+1. Descărcați codul sursă din secțiunea GitHub Releases: [solars-systems-ha Releases](https://github.com/solars-systems/solars-systems-ha/releases) sau arhiva ZIP a repository-ului.
+2. Dezarhivați fișierul descărcat.
+3. Copiați întregul folder `custom_components/solars_systems` în directorul `config/custom_components/` al instanței dvs. Home Assistant.
+   * Structura de directoare trebuie să arate astfel:
      ```text
      /config/
        └── custom_components/
@@ -59,24 +59,31 @@ Dacă nu utilizați HACS:
 
 ---
 
-## ⚙️ Configurare Pas cu Pas
+## ⚙️ Asistentul de Configurare Pas cu Pas
 
 După repornirea Home Assistant:
 
-1. Mergeți la **Settings (Setări)** -> **Devices & Services (Dispozitive și servicii)** -> apăsați pe butonul **Add Integration (Adăugare integrare)** din dreapta jos.
-2. Căutați **Solars Systems** și selectați integrarea.
+1. Mergeți la **Settings** -> **Devices & Services** -> apăsați butonul **Add Integration** din dreapta jos.
+2. Căutați **Solars Systems** și selectați-l.
 3. **Pasul 1 - Autentificare:**
    * Introduceți **Cheia API** obținută de pe [solars-systems.eu](https://solars-systems.eu).
-4. **Pasul 2 - Arhitectură Instalație & Preset:**
-   * Selectați invertorul din contul dumneavoastră.
-   * Alegeți presetul: **SolarAssistant (Detectare automată)** sau **Personalizat**.
-   * Configurați numărul de invertoare și stringuri MPPT.
-   * Bifați dacă sistemul are baterie de stocare.
+4. **Pasul 2 - Arhitectură Sistem & Preset:**
+   * Selectați invertorul din contul dvs.
+   * Alegeți presetul: **SolarAssistant (Detectare automată)**, **Axpert / Voltronic / Easun** sau **Personalizat / Custom**.
+   * Configurați numărul de invertoare și bifați dacă aveți pachete BMS integrate în Home Assistant (JK, Daly, Seplos, Pylontech etc.).
+   * Specificați dacă sistemul include baterie de stocare.
 5. **Pasul 3 - Panouri Solare & Producție (PV):**
-   * Confirmați senzorii de putere solară și tensiuni MPPT (pre-selectați automat).
-6. **Pasul 4 - Baterie & Stocare:**
-   * Confirmați senzorii de SOC, tensiune pack și curent. *(Celulele individuale sunt filtrate automat).*
-7. **Pasul 5 - Rețea, Consum & Setări:**
-   * Confirmați senzorul de consum locuință și tensiune rețea.
-   * Alegeți dacă doriți **Import Istoric** și intervalul live (implicit 30 secunde).
-8. Apăsați **Submit**. Sistemul va începe imediat transmiterea datelor!
+   * Confirmați senzorii de putere solară și tensiuni MPPT (detectați și pre-populați automat).
+6. **Pasul 4 - Baterie & Stocare (Opțional):**
+   * Confirmați senzorii principali ai bateriei (SOC %, tensiune pachet, curent). *(Sutele de senzori de celule individuale sunt filtrate automat pentru o listă curată).*
+7. **Pasul 4b - Pachete Baterii BMS & Celule (Opțional):**
+   * Dacă ați activat opțiunea BMS, alegeți numărul de pachete (de la 1 la 10).
+   * **Auto-Populare Automată:** Home Assistant detectează și pre-completează automat:
+     * **Toate celulele de la 1 la 16** (`cell_voltage_1` .. `cell_voltage_16`)
+     * **Tensiune minimă, maximă și diferență celule (Delta)**
+     * **Temperaturile** (Sonda 1, Sonda 2, MOSFET / Tube)
+     * **Comutatoare și stări ON/OFF** (Încărcare, Descărcare, Balansare, Încălzire)
+8. **Pasul 5 - Rețea, Consum Casă & Setări:**
+   * Confirmați consumul casei și tensiunea rețelei.
+   * Alegeți dacă doriți **Import Istoric** și setați intervalul de transmitere live (implicit: 30 secunde).
+9. Apăsați **Submit**. Telemetria dvs. solară live și istoricul de producție vor începe să se sincronizeze instant în Solars Systems!

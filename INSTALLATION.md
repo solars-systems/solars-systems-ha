@@ -13,7 +13,7 @@ This guide provides all the necessary steps to install, configure, and customize
    * Log in to [solars-systems.eu](https://solars-systems.eu)
    * Go to **API Keys** (or Profile -> API Keys)
    * Copy your generated key (a unique secure token).
-3. **Functional Sensors in Home Assistant:** Ensure your inverter and battery sensors are already working in Home Assistant (e.g. from SolarAssistant, Huawei Solar, Solarman, Deye Modbus, Fronius, Victron, MQTT, etc.).
+3. **Functional Sensors in Home Assistant:** Ensure your inverter, battery, or BMS sensors are already working in Home Assistant (e.g. from SolarAssistant, Huawei Solar, Solarman, Deye Modbus, Fronius, Victron, ESPHome, JK-BMS, Daly, MQTT, etc.).
 
 ---
 
@@ -69,14 +69,21 @@ After restarting Home Assistant:
    * Enter the **API Key** obtained from [solars-systems.eu](https://solars-systems.eu).
 4. **Step 2 - System Layout & Preset:**
    * Select your inverter from your account.
-   * Choose your preset: **SolarAssistant (Auto-Detect)** or **Custom**.
-   * Configure the number of inverters and MPPT strings.
+   * Choose your preset: **SolarAssistant (Auto-Detect)**, **Axpert / Voltronic / Easun**, or **Custom**.
+   * Configure the number of inverters and whether you have integrated BMS packs in Home Assistant (JK, Daly, Seplos, Pylontech, etc.).
    * Check whether your system includes a battery storage pack.
 5. **Step 3 - Solar PV Panels & Yield:**
    * Review and confirm your solar power and MPPT voltage sensors (auto-detected and pre-filled).
 6. **Step 4 - Battery Storage (Optional):**
    * Confirm your battery State of Charge (SoC %), pack voltage, and current. *(Hundreds of individual BMS cell sensors are automatically filtered out to keep your list clean).*
-7. **Step 5 - Grid, House Load & Settings:**
+7. **Step 4b - BMS Battery Packs & Cells (Optional):**
+   * If BMS packs are enabled, select the number of packs (1 to 10).
+   * **Automatic Auto-Population:** Home Assistant automatically detects and pre-fills:
+     * **Individual Cells 1 - 16** (`cell_voltage_1` .. `cell_voltage_16`)
+     * **Min & Max cell voltages** (`min_cell_voltage`, `max_cell_voltage`) and **Cell Delta**
+     * **Temperatures** (Probe 1, Probe 2, MOSFET / Tube)
+     * **Switches & Binary Statuses** (Charging, Discharging, Balancing, Heating)
+8. **Step 5 - Grid, House Load & Settings:**
    * Confirm house load consumption and grid AC voltage.
    * Choose whether to **Import Historical Data** and configure live streaming interval (default: 30 seconds).
-8. Click **Submit**. Your live solar telemetry and production history will begin streaming immediately to Solars Systems!
+9. Click **Submit**. Your live solar telemetry and production history will begin streaming immediately to Solars Systems!
