@@ -385,13 +385,13 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             selector.EntitySelectorConfig(domain="sensor", device_class="power")
         )
 
-        # 2. Dynamic MPPT Voltage fields for each inverter
+        # 2. Dynamic MPPT Voltage, Current & Power fields for each inverter
         for inv in range(1, inv_count + 1):
             inv_mppt_count = int(self._layout.get(f"mppt_inv_{inv}", 1))
             for m in range(1, inv_mppt_count + 1):
-                key = f"voltajPV{inv}" if m == 1 else f"voltajPV{inv}_{m}"
-                
-                kw_list = [
+                # 2.1 Voltage per MPPT
+                v_key = f"voltajPV{inv}" if m == 1 else f"voltajPV{inv}_{m}"
+                v_kw = [
                     f"sensor.inverter_{inv}_pv_voltage_{m}",
                     f"inverter_{inv}_pv_voltage_{m}",
                     f"inverter_{inv}_pv_{m}",
@@ -411,19 +411,73 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     f"axpert_pv_voltage_{m}",
                     f"voltronic_pv_voltage_{m}",
                 ]
-                
-                cand = _auto_detect_candidate(
+                v_cand = _auto_detect_candidate(
                     self.hass, "sensor", "voltage", ("V",),
-                    tuple(kw_list),
+                    tuple(v_kw),
                     ("batt", "baterie", "ac", "grid", "cell")
                 )
-
-                field_opts = {"default": cand} if cand else {}
-                schema_dict[vol.Optional(key, **field_opts)] = selector.EntitySelector(
+                v_opts = {"default": v_cand} if v_cand else {}
+                schema_dict[vol.Optional(v_key, **v_opts)] = selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
                 )
 
-            # Optional Power per Inverter if multiple inverters
+                # 2.2 Current per MPPT
+                c_key = f"curentPV{inv}" if (inv_mppt_count == 1 and m == 1) else f"curentPV{inv}_{m}"
+                c_kw = [
+                    f"sensor.inverter_{inv}_pv_current_{m}",
+                    f"inverter_{inv}_pv_current_{m}",
+                    f"inverter_{inv}_pv_{m}_current",
+                    f"inv{inv}_pv{m}_current",
+                    f"inv{inv}_pv_{m}_current",
+                    f"pv{inv}_current_{m}",
+                    f"pv{m}_current",
+                    f"mppt{m}_current",
+                    f"mppt_{m}_current",
+                    f"curent_pv{m}",
+                    f"curent_pv{inv}_{m}",
+                    f"growatt_ipv{m}",
+                    f"ipv{m}",
+                    f"axpert_pv_current_{m}",
+                ]
+                c_cand = _auto_detect_candidate(
+                    self.hass, "sensor", "current", ("A", "mA"),
+                    tuple(c_kw),
+                    ("batt", "baterie", "ac", "grid")
+                )
+                c_opts = {"default": c_cand} if c_cand else {}
+                schema_dict[vol.Optional(c_key, **c_opts)] = selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", device_class="current")
+                )
+
+                # 2.3 Power per MPPT (if inverter has 2+ MPPTs)
+                if inv_mppt_count > 1:
+                    p_mppt_key = f"puterePV{inv}_{m}"
+                    p_mppt_kw = [
+                        f"sensor.inverter_{inv}_pv_power_{m}",
+                        f"inverter_{inv}_pv_power_{m}",
+                        f"inverter_{inv}_pv_{m}_power",
+                        f"inv{inv}_pv{m}_power",
+                        f"inv{inv}_pv_{m}_power",
+                        f"pv{inv}_power_{m}",
+                        f"pv{m}_power",
+                        f"mppt{m}_power",
+                        f"mppt_{m}_power",
+                        f"putere_pv{m}",
+                        f"putere_pv{inv}_{m}",
+                        f"growatt_ppv{m}",
+                        f"ppv{m}",
+                    ]
+                    p_mppt_cand = _auto_detect_candidate(
+                        self.hass, "sensor", "power", ("W", "kW"),
+                        tuple(p_mppt_kw),
+                        ("consum", "load", "batt", "baterie")
+                    )
+                    p_mppt_opts = {"default": p_mppt_cand} if p_mppt_cand else {}
+                    schema_dict[vol.Optional(p_mppt_key, **p_mppt_opts)] = selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                    )
+
+            # 2.4 Total Power per Inverter if multiple inverters
             if inv_count > 1:
                 p_key = f"puterePV{inv}"
                 p_cand = _auto_detect_candidate(
@@ -852,16 +906,34 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
             selector.EntitySelectorConfig(domain="sensor", device_class="power")
         )
 
-        # 2. Dynamic MPPT Voltages and Inverter Powers
+        # 2. Dynamic MPPT Voltages, Currents and Inverter Powers
         for inv in range(1, inv_count + 1):
             inv_mppt_count = int(self._collected_data.get(f"mppt_inv_{inv}", self._val(f"mppt_inv_{inv}", 1)))
             for m in range(1, inv_mppt_count + 1):
-                key = f"voltajPV{inv}" if m == 1 else f"voltajPV{inv}_{m}"
-                cur_v = self._val(key)
+                # Voltage
+                v_key = f"voltajPV{inv}" if m == 1 else f"voltajPV{inv}_{m}"
+                cur_v = self._val(v_key)
                 f_opts = {"default": cur_v} if cur_v else {}
-                schema_dict[vol.Optional(key, **f_opts)] = selector.EntitySelector(
+                schema_dict[vol.Optional(v_key, **f_opts)] = selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
                 )
+
+                # Current
+                c_key = f"curentPV{inv}" if (inv_mppt_count == 1 and m == 1) else f"curentPV{inv}_{m}"
+                cur_c = self._val(c_key)
+                c_opts = {"default": cur_c} if cur_c else {}
+                schema_dict[vol.Optional(c_key, **c_opts)] = selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", device_class="current")
+                )
+
+                # Power per MPPT
+                if inv_mppt_count > 1:
+                    p_mppt_key = f"puterePV{inv}_{m}"
+                    cur_p_mppt = self._val(p_mppt_key)
+                    p_mppt_opts = {"default": cur_p_mppt} if cur_p_mppt else {}
+                    schema_dict[vol.Optional(p_mppt_key, **p_mppt_opts)] = selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                    )
 
             if inv_count > 1:
                 p_key = f"puterePV{inv}"

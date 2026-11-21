@@ -94,21 +94,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return None
             return str(state.state).lower() in ("on", "true", "1", "open", "active")
 
-        # Dynamic MPPT Voltages and Inverter Powers (voltajPV1, voltajPV1_2, puterePV1...)
+        # Dynamic MPPT Voltages, Currents and Inverter Powers (voltajPV1, voltajPV1_2, curentPV1, curentPV1_2, puterePV1, puterePV1_2...)
         for k, entity_id in data.items():
-            if isinstance(k, str) and (k.startswith("voltajPV") or k.startswith("puterePV")):
+            if isinstance(k, str) and (k.startswith("voltajPV") or k.startswith("puterePV") or k.startswith("curentPV")):
                 val = get_val(k)
                 if val is not None:
                     payload[k] = val
+
+        # Auto-compute total puterePV{inv} if sub-MPPT powers (puterePV{inv}_1, puterePV{inv}_2...) exist but total puterePV{inv} is not specified
+        for inv in range(1, 13):
+            sub_mppts = [v for k, v in payload.items() if (k.startswith(f"puterePV{inv}_") and isinstance(v, (int, float)))]
+            if sub_mppts and f"puterePV{inv}" not in payload:
+                payload[f"puterePV{inv}"] = round(sum(sub_mppts), 1)
 
         # Total Solar Power
         tot_pv = get_val(CONF_SENSOR_PV_POWER)
         if tot_pv is not None:
             payload["puterePV"] = tot_pv
         elif "puterePV" not in payload:
-            sub_powers = [v for k, v in payload.items() if k.startswith("puterePV") and isinstance(v, (int, float))]
+            sub_powers = [v for k, v in payload.items() if (k.startswith("puterePV") and not "_" in k and isinstance(v, (int, float)))]
+            if not sub_powers:
+                sub_powers = [v for k, v in payload.items() if k.startswith("puterePV") and isinstance(v, (int, float))]
             if sub_powers:
-                payload["puterePV"] = sum(sub_powers)
+                payload["puterePV"] = round(sum(sub_powers), 1)
 
         # Consumption & Grid
         load_power = get_val(CONF_SENSOR_LOAD_POWER)
