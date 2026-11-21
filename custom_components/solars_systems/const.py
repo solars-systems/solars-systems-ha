@@ -22,6 +22,7 @@ CONF_BMS_COUNT = "bms_count"
 
 CONF_SENSOR_PV_POWER = "sensor_pv_power"
 CONF_SENSOR_LOAD_POWER = "sensor_load_power"
+CONF_SENSOR_GRID_POWER = "sensor_grid_power"
 CONF_SENSOR_BATT_SOC = "sensor_batt_soc"
 CONF_SENSOR_BATT_VOLT = "sensor_batt_volt"
 CONF_SENSOR_BATT_CURR = "sensor_batt_curr"

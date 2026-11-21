@@ -30,6 +30,7 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     CONF_SENSOR_PV_POWER,
     CONF_SENSOR_LOAD_POWER,
+    CONF_SENSOR_GRID_POWER,
     CONF_SENSOR_BATT_SOC,
     CONF_SENSOR_BATT_VOLT,
     CONF_SENSOR_BATT_CURR,
@@ -688,6 +689,21 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             selector.EntitySelectorConfig(domain="sensor", device_class="power")
         )
 
+        # 1.1 Grid / AC In Power (for Hybrid inverters, Smart Meters, Feed-In / Import)
+        grid_pwr_cand = _auto_detect_candidate(
+            self.hass, "sensor", "power", ("W", "kW"),
+            (
+                "sensor.grid_power", "sensor.inverter_1_grid_power", "sensor.solar_assistant_grid_power",
+                "sensor.ac_input_power", "sensor.grid_active_power", "sensor.total_grid_power",
+                "grid_power", "ac_input_power", "grid_active_power", "putere_retea", "putereacin",
+                "infinisolar_v_x_3_grid_power", "axpert_max_grid_power", "deye_grid_power"
+            ),
+            ("battery", "baterie", "pv", "load", "consum", "cell")
+        )
+        schema_dict[vol.Optional(CONF_SENSOR_GRID_POWER, **({"default": grid_pwr_cand} if grid_pwr_cand else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+        )
+
         # 2. Grid AC Voltage
         grid_cand = _auto_detect_candidate(
             self.hass, "sensor", "voltage", ("V",),
@@ -987,6 +1003,11 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
 
         cur_load = self._val(CONF_SENSOR_LOAD_POWER)
         schema_dict[vol.Optional(CONF_SENSOR_LOAD_POWER, **({"default": cur_load} if cur_load else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+        )
+
+        cur_grid_pwr = self._val(CONF_SENSOR_GRID_POWER)
+        schema_dict[vol.Optional(CONF_SENSOR_GRID_POWER, **({"default": cur_grid_pwr} if cur_grid_pwr else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="power")
         )
 

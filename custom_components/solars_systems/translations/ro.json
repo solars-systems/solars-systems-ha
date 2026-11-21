@@ -44,6 +44,7 @@
         "description": "Configurați senzorii de consum, tensiune rețea și preferințele de transmitere live și istoric.",
         "data": {
           "sensor_load_power": "Consum Casă (W/kW)",
+          "sensor_grid_power": "Putere Rețea / Grid AC In (W/kW) [Hibrid / Import / Export]",
           "sensor_grid_volt": "Tensiune Rețea AC In (V)",
           "sensor_ac_out_volt": "Tensiune Ieșire Invertor AC Out (V)",
           "import_history": "Importă istoricul de energie din trecut",
@@ -251,6 +252,7 @@
         "description": "Ajustați senzorii de consum, tensiune rețea și intervalul de raportare live.",
         "data": {
           "sensor_load_power": "Consum Casă (W/kW)",
+          "sensor_grid_power": "Putere Rețea / Grid AC In (W/kW) [Hibrid / Import / Export]",
           "sensor_grid_volt": "Tensiune Rețea AC In (V)",
           "sensor_ac_out_volt": "Tensiune Ieșire Invertor AC Out (V)",
           "update_interval": "Interval trimitere date live (secunde)"

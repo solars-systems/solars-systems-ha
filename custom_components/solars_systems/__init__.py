@@ -21,6 +21,7 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     CONF_SENSOR_PV_POWER,
     CONF_SENSOR_LOAD_POWER,
+    CONF_SENSOR_GRID_POWER,
     CONF_SENSOR_BATT_SOC,
     CONF_SENSOR_BATT_VOLT,
     CONF_SENSOR_BATT_CURR,
@@ -77,7 +78,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             state = hass.states.get(entity_id)
             if not state:
                 return None
-            return _safe_float(state.state)
+            val = _safe_float(state.state)
+            if val is not None:
+                unit = state.attributes.get("unit_of_measurement", "")
+                if unit == "kW":
+                    val = round(val * 1000.0, 1)
+            return val
 
         def get_bool_val(key: str) -> bool | None:
             entity_id = data.get(key)
@@ -106,11 +112,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Consumption & Grid
         load_power = get_val(CONF_SENSOR_LOAD_POWER)
+        grid_power = get_val(CONF_SENSOR_GRID_POWER)
         grid_volt = get_val(CONF_SENSOR_GRID_VOLT)
         ac_out_volt = get_val(CONF_SENSOR_AC_OUT_VOLT)
 
         if load_power is not None:
             payload["putereConsum"] = load_power
+        if grid_power is not None:
+            payload["putereAcIn"] = grid_power
         if grid_volt is not None:
             payload["tensiuneAcIn"] = grid_volt
         if ac_out_volt is not None:

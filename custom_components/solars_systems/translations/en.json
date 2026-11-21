@@ -44,6 +44,7 @@
         "description": "Configure house load power, grid AC voltages, history import and live reporting interval.",
         "data": {
           "sensor_load_power": "House Load Power (W/kW)",
+          "sensor_grid_power": "Grid / AC In Power (W/kW) [Hybrid / Grid Feed-In / Import]",
           "sensor_grid_volt": "Grid AC In Voltage (V)",
           "sensor_ac_out_volt": "Inverter AC Out Voltage (V)",
           "import_history": "Import past energy history",
@@ -250,6 +251,7 @@
         "description": "Adjust house load power, grid AC voltages, and live update interval.",
         "data": {
           "sensor_load_power": "House Load Power (W/kW)",
+          "sensor_grid_power": "Grid / AC In Power (W/kW) [Hybrid / Grid Feed-In / Import]",
           "sensor_grid_volt": "Grid AC In Voltage (V)",
           "sensor_ac_out_volt": "Inverter AC Out Voltage (V)",
           "update_interval": "Live data update interval (seconds)"
