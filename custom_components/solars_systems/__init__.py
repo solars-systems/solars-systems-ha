@@ -15,6 +15,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
+    INTEGRATION_VERSION,
     DEFAULT_API_URL,
     CONF_API_KEY,
     CONF_INVERTER_ID,
@@ -62,6 +63,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session = async_get_clientsession(hass)
     headers = {
         "x-api-key": api_key,
+        "x-integration-version": INTEGRATION_VERSION,
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
@@ -69,7 +71,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # 1. Periodic Telemetry Sender
     async def async_send_telemetry(now: datetime | None = None) -> None:
         """Read states from Home Assistant and push to Solars Systems API."""
-        payload: dict[str, Any] = {"macid": inverter_id}
+        payload: dict[str, Any] = {"macid": inverter_id, "integration_version": INTEGRATION_VERSION}
 
         def get_val(key: str) -> float | None:
             entity_id = data.get(key)
@@ -248,7 +250,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 try:
                     async with session.post(
                         f"{DEFAULT_API_URL}/bms-telemetry",
-                        json={"macid": inverter_id, "packs": bms_packs},
+                        json={"macid": inverter_id, "integration_version": INTEGRATION_VERSION, "packs": bms_packs},
                         headers=headers,
                         timeout=10,
                     ) as bms_resp:
