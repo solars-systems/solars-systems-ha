@@ -133,8 +133,20 @@ def _auto_detect_candidate(
             u_meas = state.attributes.get("unit_of_measurement")
             name = f"{entity_id} {state.attributes.get('friendly_name', '')}".lower()
 
-            # Class or unit matching
+            # Class or unit matching (with relaxed fallback for sensors lacking explicit device_class)
             class_match = (device_class and d_class == device_class) or (units and u_meas in units)
+            if not class_match:
+                if device_class == "current" and (u_meas in ("A", "mA") or any(w in name for w in ("current", "curent", "amp"))):
+                    class_match = True
+                elif device_class == "voltage" and (u_meas in ("V", "mV") or any(w in name for w in ("volt", "tensiune"))):
+                    class_match = True
+                elif device_class == "battery" and (u_meas == "%" or any(w in name for w in ("soc", "baterie", "battery"))):
+                    class_match = True
+                elif device_class == "power" and (u_meas in ("W", "kW") or any(w in name for w in ("power", "putere"))):
+                    class_match = True
+                elif device_class == "energy" and (u_meas in ("kWh", "Wh") or any(w in name for w in ("energy", "energie", "kwh"))):
+                    class_match = True
+
             if not class_match:
                 continue
 
@@ -170,7 +182,16 @@ def _auto_detect_bms_pack(hass, p: int) -> dict[str, Any]:
     soc_cand: str | None = None
     volt_cand: str | None = None
 
-    p_patterns = [f"bms{p}_", f"bms_{p}_", f"battery_{p}_", f"pack_{p}_", f"pack{p}_"]
+    p_patterns = [
+        f"bms{p}_", f"bms_{p}_", f"bms{p:02d}_", f"bms_{p:02d}_",
+        f"battery_{p}_", f"battery{p}_", f"battery_{p:02d}_", f"battery{p:02d}_",
+        f"baterie_{p}_", f"baterie{p}_", f"baterie_{p:02d}_", f"baterie{p:02d}_",
+        f"pack_{p}_", f"pack{p}_", f"pack_{p:02d}_", f"pack{p:02d}_",
+        f"jk_bms_{p}_", f"jk_bms_{p:02d}_", f"jkbms_{p}_", f"jkbms_{p:02d}_",
+        f"jk_{p}_", f"jk_{p:02d}_", f"daly_{p}_", f"daly_{p:02d}_",
+        f"seplos_{p}_", f"seplos_{p:02d}_", f"pylon_{p}_", f"pylon_{p:02d}_",
+        f"bms_{p}", f"bms{p}", f"pack_{p}", f"pack{p}", f"battery_{p}", f"battery{p}", f"baterie_{p}", f"baterie{p}",
+    ]
     if p == 1:
         p_patterns.extend(["bms1", "bms_1", "bms_", "jk_bms", "jkbms", "daly", "seplos", "pylon"])
 
@@ -222,7 +243,7 @@ def _auto_detect_bms_pack(hass, p: int) -> dict[str, Any]:
                     return eid
         return None
 
-    prefix_re = rf"bms_?{p}" if p > 1 else rf"(?:bms_?1|bms_|jk_?bms|jkbms|daly|seplos|pylon)"
+    prefix_re = rf"(?:bms|battery|baterie|pack|jk_bms|jkbms|jk|daly|seplos|pylon)[_\-\s]*0?{p}(?:_|$)" if p > 1 else rf"(?:(?:bms|battery|baterie|pack|jk_bms|jkbms|jk|daly|seplos|pylon)[_\-\s]*0?1(?:_|$)|bms_|jk_?bms|jkbms|daly|seplos|pylon)"
     results["soc"] = soc_cand or find_ent(["sensor"], ["state_of_charge", "soc"], rf"{prefix_re}.*(?:state_of_charge|soc)$")
     results["voltage"] = volt_cand or find_ent(["sensor"], ["total_voltage", "battery_voltage", "voltage"], rf"{prefix_re}.*(?:total_voltage|battery_voltage|voltage)$")
     results["current"] = find_ent(["sensor"], ["current", "battery_current"], rf"{prefix_re}.*(?<!balancing_)current$")
@@ -511,17 +532,27 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     f"sensor.inverter_{inv}_pv_current_{m}",
                     f"inverter_{inv}_pv_current_{m}",
                     f"inverter_{inv}_pv_{m}_current",
+                    f"inverter_{inv}_pv{m}_current",
                     f"inv{inv}_pv{m}_current",
                     f"inv{inv}_pv_{m}_current",
                     f"pv{inv}_current_{m}",
                     f"pv{m}_current",
+                    f"pv_{m}_current",
+                    f"pv{inv}_{m}_current",
                     f"mppt{m}_current",
                     f"mppt_{m}_current",
                     f"curent_pv{m}",
+                    f"curent_pv_{m}",
                     f"curent_pv{inv}_{m}",
+                    f"pv{m}_curent",
                     f"growatt_ipv{m}",
                     f"ipv{m}",
                     f"axpert_pv_current_{m}",
+                    f"axpert_max_pv_current_{m}",
+                    f"solar_assistant_pv{m}_current",
+                    f"solarassistant_pv_{m}_current",
+                    f"curent_string_{m}",
+                    f"string_{m}_current",
                 ]
                 c_cand = _auto_detect_candidate(
                     self.hass, "sensor", "current", ("A", "mA"),
@@ -530,7 +561,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
                 c_opts = {"default": c_cand} if c_cand else {}
                 schema_dict[vol.Optional(c_key, **c_opts)] = selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", device_class="current")
+                    selector.EntitySelectorConfig(domain="sensor")
                 )
 
                 # 2.3 Power per MPPT (if inverter has 2+ MPPTs)
@@ -636,7 +667,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             exclude_cells=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_BATT_SOC, **({"default": soc_cand} if soc_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="battery")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         # 2. Battery Voltage (V) - STRICT anti-cell filter to eliminate 160+ cell voltage sensors!
@@ -648,7 +679,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             exclude_cells=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_BATT_VOLT, **({"default": batt_v_cand} if batt_v_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         # 3. Battery Current (A) - aggregate or total
@@ -660,7 +691,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             exclude_cells=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_BATT_CURR, **({"default": batt_c_cand} if batt_c_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="current")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         # 4. Battery Power (W/kW)
@@ -697,43 +728,38 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_heat_pump()
             return await self.async_step_grid()
 
-        # Auto-detect number of BMS packs if not yet customized
+        # Auto-detect number of BMS packs if not yet customized (support up to 16 packs)
         if CONF_BMS_COUNT not in self._collected_data and CONF_BMS_COUNT not in self._layout:
             detected_count = 1
             all_eids = [s.entity_id.lower() for s in self.hass.states.async_all()]
-            for p_chk in range(2, 11):
-                if any(f"bms{p_chk}" in eid or f"bms_{p_chk}" in eid for eid in all_eids):
-                    detected_count = p_chk
+            for p_chk in range(2, 17):
+                pat = re.compile(rf"(?:bms|battery|baterie|pack|jk|jkbms|seplos|daly)[_\-\s]*0?{p_chk}(?:_|$)")
+                if any(pat.search(eid) for eid in all_eids):
+                    detected_count = max(detected_count, p_chk)
             bms_count = detected_count
 
         schema_dict: dict[Any, Any] = {
             vol.Required(CONF_BMS_COUNT, default=bms_count): vol.In({
-                1: "1 Pachet BMS / 1 BMS Pack",
-                2: "2 Pachete BMS / 2 BMS Packs",
-                3: "3 Pachete BMS / 3 BMS Packs",
-                4: "4 Pachete BMS / 4 BMS Packs",
-                5: "5 Pachete BMS / 5 BMS Packs",
-                6: "6 Pachete BMS / 6 BMS Packs",
-                8: "8 Pachete BMS / 8 BMS Packs",
-                10: "10 Pachete BMS / 10 BMS Packs",
+                i: f"{i} Pachete BMS / {i} BMS Packs" if i > 1 else "1 Pachet BMS / 1 BMS Pack"
+                for i in range(1, 17)
             })
         }
 
         for p in range(1, bms_count + 1):
             det = _auto_detect_bms_pack(self.hass, p)
 
-            # SOC & Electrical
+            # SOC & Electrical (relaxed selector without strict device_class)
             schema_dict[vol.Optional(f"bms_{p}_soc", **({"default": det["soc"]} if det.get("soc") else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="battery")
+                selector.EntitySelectorConfig(domain="sensor")
             )
             schema_dict[vol.Optional(f"bms_{p}_voltage", **({"default": det["voltage"]} if det.get("voltage") else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+                selector.EntitySelectorConfig(domain="sensor")
             )
             schema_dict[vol.Optional(f"bms_{p}_current", **({"default": det["current"]} if det.get("current") else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="current")
+                selector.EntitySelectorConfig(domain="sensor")
             )
             schema_dict[vol.Optional(f"bms_{p}_power", **({"default": det["power"]} if det.get("power") else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                selector.EntitySelectorConfig(domain="sensor")
             )
 
             # Cell Diagnostics
@@ -1081,7 +1107,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                 cur_c = self._val(c_key)
                 c_opts = {"default": cur_c} if cur_c else {}
                 schema_dict[vol.Optional(c_key, **c_opts)] = selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", device_class="current")
+                    selector.EntitySelectorConfig(domain="sensor")
                 )
 
                 # Power per MPPT
@@ -1141,17 +1167,17 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
 
         cur_soc = self._val(CONF_SENSOR_BATT_SOC)
         schema_dict[vol.Optional(CONF_SENSOR_BATT_SOC, **({"default": cur_soc} if cur_soc else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="battery")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_volt = self._val(CONF_SENSOR_BATT_VOLT)
         schema_dict[vol.Optional(CONF_SENSOR_BATT_VOLT, **({"default": cur_volt} if cur_volt else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_curr = self._val(CONF_SENSOR_BATT_CURR)
         schema_dict[vol.Optional(CONF_SENSOR_BATT_CURR, **({"default": cur_curr} if cur_curr else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="current")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_pow = self._val(CONF_SENSOR_BATT_POWER)
@@ -1179,50 +1205,45 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_heat_pump()
             return await self.async_step_grid()
 
-        # Auto-detect number of BMS packs if not yet customized
+        # Auto-detect number of BMS packs if not yet customized (support up to 16 packs)
         if CONF_BMS_COUNT not in self._collected_data and not self._val(CONF_BMS_COUNT):
             detected_count = 1
             all_eids = [s.entity_id.lower() for s in self.hass.states.async_all()]
-            for p_chk in range(2, 11):
-                if any(f"bms{p_chk}" in eid or f"bms_{p_chk}" in eid for eid in all_eids):
-                    detected_count = p_chk
+            for p_chk in range(2, 17):
+                pat = re.compile(rf"(?:bms|battery|baterie|pack|jk|jkbms|seplos|daly)[_\-\s]*0?{p_chk}(?:_|$)")
+                if any(pat.search(eid) for eid in all_eids):
+                    detected_count = max(detected_count, p_chk)
             bms_count = detected_count
 
         schema_dict: dict[Any, Any] = {
             vol.Required(CONF_BMS_COUNT, default=bms_count): vol.In({
-                1: "1 Pachet BMS",
-                2: "2 Pachete BMS",
-                3: "3 Pachete BMS",
-                4: "4 Pachete BMS",
-                5: "5 Pachete BMS",
-                6: "6 Pachete BMS",
-                8: "8 Pachete BMS",
-                10: "10 Pachete BMS",
+                i: f"{i} Pachete BMS / {i} BMS Packs" if i > 1 else "1 Pachet BMS / 1 BMS Pack"
+                for i in range(1, 17)
             })
         }
 
         for p in range(1, bms_count + 1):
             det = _auto_detect_bms_pack(self.hass, p)
 
-            # SOC & Electrical
+            # SOC & Electrical (relaxed selector without strict device_class)
             cur_soc = self._val(f"bms_{p}_soc") or det.get("soc")
             schema_dict[vol.Optional(f"bms_{p}_soc", **({"default": cur_soc} if cur_soc else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="battery")
+                selector.EntitySelectorConfig(domain="sensor")
             )
 
             cur_v = self._val(f"bms_{p}_voltage") or det.get("voltage")
             schema_dict[vol.Optional(f"bms_{p}_voltage", **({"default": cur_v} if cur_v else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+                selector.EntitySelectorConfig(domain="sensor")
             )
 
             cur_c = self._val(f"bms_{p}_current") or det.get("current")
             schema_dict[vol.Optional(f"bms_{p}_current", **({"default": cur_c} if cur_c else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="current")
+                selector.EntitySelectorConfig(domain="sensor")
             )
 
             cur_p = self._val(f"bms_{p}_power") or det.get("power")
             schema_dict[vol.Optional(f"bms_{p}_power", **({"default": cur_p} if cur_p else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                selector.EntitySelectorConfig(domain="sensor")
             )
 
             # Cell Diagnostics
