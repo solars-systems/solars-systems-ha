@@ -16,7 +16,8 @@
           "system_preset": "Tip Sistem / Preset",
           "inverter_count": "Număr de invertoare în locație",
           "has_battery": "Sistemul include baterie de stocare?",
-          "has_ha_bms": "Am pachete BMS integrate în Home Assistant (JK, Daly, Seplos, Pylontech)"
+          "has_ha_bms": "Am pachete BMS integrate în Home Assistant (JK, Daly, Seplos, Pylontech)",
+          "has_heat_pump": "Am Pompă de Căldură / HVAC integrat în Home Assistant"
         }
       },
       "solar": {
@@ -190,6 +191,26 @@
           "bms_4_cell_15": "BMS 4 - Tensiune Celulă 15 (V)",
           "bms_4_cell_16": "BMS 4 - Tensiune Celulă 16 (V)"
         }
+      },
+      "heat_pump": {
+        "title": "Monitorizare Pompă de Căldură (Opțional)",
+        "description": "Configurați senzorii pompei de căldură (putere electrică consumată, temperaturi tur/retur/ACM, debit, COP, stare). Senzorii sunt detectați automat:",
+        "data": {
+          "hp_power": "Putere Electrică Consumată (W sau kW)",
+          "hp_energy": "Consum Total Energie (kWh)",
+          "hp_temp_flow": "Temperatură Agent Termic Tur (°C)",
+          "hp_temp_return": "Temperatură Agent Termic Retur (°C)",
+          "hp_temp_dhw": "Temperatură Boiler Apă Caldă / ACM (°C)",
+          "hp_temp_buffer": "Temperatură Puffer / Stocare Termică (°C)",
+          "hp_temp_outdoor": "Temperatură Exterioară / Ambient (°C)",
+          "hp_flow_rate": "Debit Apă (L/min)",
+          "hp_heat_power": "Putere Termică Generată (kW)",
+          "hp_cop": "Coeficient de Performanță (COP)",
+          "hp_comp_freq": "Frecvență Compresor (Hz)",
+          "hp_status": "Mod / Stare Pompă (Entitate Climate sau Senzor)",
+          "hp_defrost": "Dezghețare Activă (Defrost)",
+          "hp_fault": "Senzor Avarie / Cod Eroare"
+        }
       }
     },
     "error": {
@@ -224,7 +245,8 @@
         "data": {
           "inverter_count": "Număr de invertoare în locație",
           "has_battery": "Sistemul include baterie de stocare?",
-          "has_ha_bms": "Am pachete BMS integrate în Home Assistant (JK, Daly, Seplos, Pylontech)"
+          "has_ha_bms": "Am pachete BMS integrate în Home Assistant (JK, Daly, Seplos, Pylontech)",
+          "has_heat_pump": "Am Pompă de Căldură / HVAC integrat în Home Assistant"
         }
       },
       "solar": {
@@ -395,6 +417,26 @@
           "bms_4_cell_14": "BMS 4 - Tensiune Celulă 14 (V)",
           "bms_4_cell_15": "BMS 4 - Tensiune Celulă 15 (V)",
           "bms_4_cell_16": "BMS 4 - Tensiune Celulă 16 (V)"
+        }
+      },
+      "heat_pump": {
+        "title": "Monitorizare Pompă de Căldură (Opțional)",
+        "description": "Configurați senzorii pompei de căldură (putere electrică consumată, temperaturi tur/retur/ACM, debit, COP, stare). Senzorii sunt detectați automat:",
+        "data": {
+          "hp_power": "Putere Electrică Consumată (W sau kW)",
+          "hp_energy": "Consum Total Energie (kWh)",
+          "hp_temp_flow": "Temperatură Agent Termic Tur (°C)",
+          "hp_temp_return": "Temperatură Agent Termic Retur (°C)",
+          "hp_temp_dhw": "Temperatură Boiler Apă Caldă / ACM (°C)",
+          "hp_temp_buffer": "Temperatură Puffer / Stocare Termică (°C)",
+          "hp_temp_outdoor": "Temperatură Exterioară / Ambient (°C)",
+          "hp_flow_rate": "Debit Apă (L/min)",
+          "hp_heat_power": "Putere Termică Generată (kW)",
+          "hp_cop": "Coeficient de Performanță (COP)",
+          "hp_comp_freq": "Frecvență Compresor (Hz)",
+          "hp_status": "Mod / Stare Pompă (Entitate Climate sau Senzor)",
+          "hp_defrost": "Dezghețare Activă (Defrost)",
+          "hp_fault": "Senzor Avarie / Cod Eroare"
         }
       }
     }

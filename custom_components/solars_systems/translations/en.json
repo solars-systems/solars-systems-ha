@@ -16,7 +16,8 @@
           "system_preset": "System Preset",
           "inverter_count": "Number of inverters",
           "has_battery": "System has battery storage?",
-          "has_ha_bms": "I have BMS packs integrated into Home Assistant (JK, Daly, Seplos, Pylontech)"
+          "has_ha_bms": "I have BMS packs integrated into Home Assistant (JK, Daly, Seplos, Pylontech)",
+          "has_heat_pump": "I have a Heat Pump / HVAC integrated into Home Assistant"
         }
       },
       "solar": {
@@ -190,6 +191,26 @@
           "bms_4_cell_15": "BMS 4 - Cell 15 Voltage (V)",
           "bms_4_cell_16": "BMS 4 - Cell 16 Voltage (V)"
         }
+      },
+      "heat_pump": {
+        "title": "Heat Pump Monitoring (Optional)",
+        "description": "Configure heat pump sensors (power consumption, flow/return/DHW temperatures, flow rate, COP, status). Candidates are auto-detected:",
+        "data": {
+          "hp_power": "Electric Power Consumption (W or kW)",
+          "hp_energy": "Total Energy Consumed (kWh)",
+          "hp_temp_flow": "Flow Water Temperature / Tur (°C)",
+          "hp_temp_return": "Return Water Temperature / Retur (°C)",
+          "hp_temp_dhw": "DHW / Hot Water Tank Temperature (°C)",
+          "hp_temp_buffer": "Buffer Tank Temperature (°C)",
+          "hp_temp_outdoor": "Outdoor / Ambient Temperature (°C)",
+          "hp_flow_rate": "Water Flow Rate (L/min)",
+          "hp_heat_power": "Thermal Heat Output (kW)",
+          "hp_cop": "Coefficient of Performance (COP)",
+          "hp_comp_freq": "Compressor Frequency (Hz)",
+          "hp_status": "Status / Mode (Climate Entity or Sensor)",
+          "hp_defrost": "Defrost Active (Binary Sensor)",
+          "hp_fault": "Fault / Error Sensor"
+        }
       }
     },
     "error": {
@@ -223,7 +244,8 @@
         "data": {
           "inverter_count": "Number of inverters",
           "has_battery": "System has battery storage?",
-          "has_ha_bms": "I have BMS packs integrated into Home Assistant (JK, Daly, Seplos, Pylontech)"
+          "has_ha_bms": "I have BMS packs integrated into Home Assistant (JK, Daly, Seplos, Pylontech)",
+          "has_heat_pump": "I have a Heat Pump / HVAC integrated into Home Assistant"
         }
       },
       "solar": {
@@ -394,6 +416,26 @@
           "bms_4_cell_14": "BMS 4 - Cell 14 Voltage (V)",
           "bms_4_cell_15": "BMS 4 - Cell 15 Voltage (V)",
           "bms_4_cell_16": "BMS 4 - Cell 16 Voltage (V)"
+        }
+      },
+      "heat_pump": {
+        "title": "Heat Pump Monitoring (Optional)",
+        "description": "Configure heat pump sensors (power consumption, flow/return/DHW temperatures, flow rate, COP, status). Candidates are auto-detected:",
+        "data": {
+          "hp_power": "Electric Power Consumption (W or kW)",
+          "hp_energy": "Total Energy Consumed (kWh)",
+          "hp_temp_flow": "Flow Water Temperature / Tur (°C)",
+          "hp_temp_return": "Return Water Temperature / Retur (°C)",
+          "hp_temp_dhw": "DHW / Hot Water Tank Temperature (°C)",
+          "hp_temp_buffer": "Buffer Tank Temperature (°C)",
+          "hp_temp_outdoor": "Outdoor / Ambient Temperature (°C)",
+          "hp_flow_rate": "Water Flow Rate (L/min)",
+          "hp_heat_power": "Thermal Heat Output (kW)",
+          "hp_cop": "Coefficient of Performance (COP)",
+          "hp_comp_freq": "Compressor Frequency (Hz)",
+          "hp_status": "Status / Mode (Climate Entity or Sensor)",
+          "hp_defrost": "Defrost Active (Binary Sensor)",
+          "hp_fault": "Fault / Error Sensor"
         }
       }
     }

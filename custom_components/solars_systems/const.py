@@ -1,7 +1,7 @@
 """Constants for the Solars Systems integration."""
 
 DOMAIN = "solars_systems"
-INTEGRATION_VERSION = "1.0.11"
+INTEGRATION_VERSION = "1.0.12"
 
 DEFAULT_API_URL = "https://api.solars-systems.eu/ha"
 DEFAULT_UPDATE_INTERVAL = 30  # seconds
@@ -20,6 +20,23 @@ PRESET_CUSTOM = "custom"
 
 CONF_HAS_HA_BMS = "has_ha_bms"
 CONF_BMS_COUNT = "bms_count"
+
+# Heat Pump Constants
+CONF_HAS_HEAT_PUMP = "has_heat_pump"
+CONF_HP_POWER = "hp_power"
+CONF_HP_ENERGY = "hp_energy"
+CONF_HP_TEMP_FLOW = "hp_temp_flow"          # Tur
+CONF_HP_TEMP_RETURN = "hp_temp_return"      # Retur
+CONF_HP_TEMP_DHW = "hp_temp_dhw"            # Boiler ACM
+CONF_HP_TEMP_BUFFER = "hp_temp_buffer"      # Puffer
+CONF_HP_TEMP_OUTDOOR = "hp_temp_outdoor"    # Exterior ambient
+CONF_HP_FLOW_RATE = "hp_flow_rate"          # Debit apa L/min
+CONF_HP_HEAT_POWER = "hp_heat_power"        # Putere termica kW
+CONF_HP_COP = "hp_cop"                      # COP
+CONF_HP_COMP_FREQ = "hp_comp_freq"          # Compresor Hz
+CONF_HP_STATUS = "hp_status"                # Stare / Mod (climate sau sensor)
+CONF_HP_DEFROST = "hp_defrost"              # Dezghetare activa
+CONF_HP_FAULT = "hp_fault"                  # Avarie / Cod eroare
 
 CONF_SENSOR_PV_POWER = "sensor_pv_power"
 CONF_SENSOR_LOAD_POWER = "sensor_load_power"

@@ -20,6 +20,23 @@ from .const import (
     CONF_API_KEY,
     CONF_INVERTER_ID,
     CONF_UPDATE_INTERVAL,
+    CONF_HAS_HA_BMS,
+    CONF_BMS_COUNT,
+    CONF_HAS_HEAT_PUMP,
+    CONF_HP_POWER,
+    CONF_HP_ENERGY,
+    CONF_HP_TEMP_FLOW,
+    CONF_HP_TEMP_RETURN,
+    CONF_HP_TEMP_DHW,
+    CONF_HP_TEMP_BUFFER,
+    CONF_HP_TEMP_OUTDOOR,
+    CONF_HP_FLOW_RATE,
+    CONF_HP_HEAT_POWER,
+    CONF_HP_COP,
+    CONF_HP_COMP_FREQ,
+    CONF_HP_STATUS,
+    CONF_HP_DEFROST,
+    CONF_HP_FAULT,
     CONF_SENSOR_PV_POWER,
     CONF_SENSOR_LOAD_POWER,
     CONF_SENSOR_GRID_POWER,
@@ -258,6 +275,97 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                             _LOGGER.warning("Solars Systems API returned status %s on BMS telemetry", bms_resp.status)
                 except Exception as bms_err:
                     _LOGGER.debug("Error sending BMS telemetry to Solars Systems: %s", bms_err)
+
+        # Send Heat Pump telemetry if configured
+        if data.get(CONF_HAS_HEAT_PUMP):
+            hp_payload: dict[str, Any] = {}
+            hp_pwr = get_val(CONF_HP_POWER)
+            if hp_pwr is not None:
+                hp_payload["putere_el_w"] = hp_pwr
+                hp_payload["putere_el_kw"] = round(hp_pwr / 1000.0, 2)
+                payload["puterePompa"] = hp_pwr
+
+            hp_en = get_val(CONF_HP_ENERGY)
+            if hp_en is not None:
+                hp_payload["energie_total_kwh"] = hp_en
+
+            t_tur = get_val(CONF_HP_TEMP_FLOW)
+            if t_tur is not None:
+                hp_payload["temp_tur"] = t_tur
+
+            t_ret = get_val(CONF_HP_TEMP_RETURN)
+            if t_ret is not None:
+                hp_payload["temp_retur"] = t_ret
+
+            t_dhw = get_val(CONF_HP_TEMP_DHW)
+            if t_dhw is not None:
+                hp_payload["temp_boiler"] = t_dhw
+
+            t_buf = get_val(CONF_HP_TEMP_BUFFER)
+            if t_buf is not None:
+                hp_payload["temp_puffer"] = t_buf
+
+            t_amb = get_val(CONF_HP_TEMP_OUTDOOR)
+            if t_amb is not None:
+                hp_payload["temp_ambient"] = t_amb
+
+            flow = get_val(CONF_HP_FLOW_RATE)
+            if flow is not None:
+                hp_payload["debit"] = flow
+
+            heat_pwr = get_val(CONF_HP_HEAT_POWER)
+            if heat_pwr is not None:
+                hp_payload["putere_term_kw"] = heat_pwr
+            elif flow is not None and t_tur is not None and t_ret is not None and t_tur > t_ret:
+                # Calcul fizic: Debit (L/min) * 0.06973 * deltaT (kW)
+                hp_payload["putere_term_kw"] = round(flow * 0.06973 * (t_tur - t_ret), 2)
+
+            cop_val = get_val(CONF_HP_COP)
+            if cop_val is not None:
+                hp_payload["cop"] = cop_val
+            elif "putere_term_kw" in hp_payload and hp_pwr and hp_pwr > 100:
+                hp_payload["cop"] = round(hp_payload["putere_term_kw"] / (hp_pwr / 1000.0), 2)
+
+            comp_hz = get_val(CONF_HP_COMP_FREQ)
+            if comp_hz is not None:
+                hp_payload["comp_hz"] = int(comp_hz)
+
+            st_eid = data.get(CONF_HP_STATUS)
+            if st_eid:
+                st_state = hass.states.get(st_eid)
+                if st_state and st_state.state not in ("unknown", "unavailable", None):
+                    hp_payload["stare"] = str(st_state.state)
+                    action = st_state.attributes.get("hvac_action")
+                    hp_payload["mode"] = str(action) if action else str(st_state.state)
+
+            defrost_val = get_bool_val(CONF_HP_DEFROST)
+            if defrost_val is not None:
+                hp_payload["defrost"] = defrost_val
+
+            fault_val = get_bool_val(CONF_HP_FAULT)
+            if fault_val is not None:
+                hp_payload["fault"] = fault_val
+            else:
+                fault_eid = data.get(CONF_HP_FAULT)
+                if fault_eid:
+                    f_st = hass.states.get(fault_eid)
+                    if f_st and f_st.state not in ("unknown", "unavailable", "0", "false", "off", "ok", "none", None):
+                        hp_payload["fault"] = True
+                        hp_payload["fault_code"] = str(f_st.state)
+
+            if hp_payload:
+                hp_payload["valid"] = True
+                try:
+                    async with session.post(
+                        f"{DEFAULT_API_URL}/heatpump-telemetry",
+                        json={"macid": inverter_id, "integration_version": INTEGRATION_VERSION, "heat_pump": hp_payload},
+                        headers=headers,
+                        timeout=10,
+                    ) as hp_resp:
+                        if hp_resp.status != 200:
+                            _LOGGER.warning("Solars Systems API returned status %s on heat pump telemetry", hp_resp.status)
+                except Exception as hp_err:
+                    _LOGGER.debug("Error sending heat pump telemetry to Solars Systems: %s", hp_err)
 
     # 2. Historical Import Task
     async def async_run_history_import() -> None:
