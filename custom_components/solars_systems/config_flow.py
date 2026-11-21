@@ -157,7 +157,7 @@ def _auto_detect_bms_pack(hass, p: int) -> dict[str, Any]:
 
     p_patterns = [f"bms{p}_", f"bms_{p}_", f"battery_{p}_", f"pack_{p}_", f"pack{p}_"]
     if p == 1:
-        p_patterns.extend(["bms1", "bms_1", "bms_"])
+        p_patterns.extend(["bms1", "bms_1", "bms_", "jk_bms", "jkbms", "daly", "seplos", "pylon"])
 
     # 1. Search for SOC candidate
     for eid in all_eids:
@@ -207,27 +207,28 @@ def _auto_detect_bms_pack(hass, p: int) -> dict[str, Any]:
                     return eid
         return None
 
-    results["soc"] = soc_cand or find_ent(["sensor"], ["state_of_charge", "soc"], rf"bms_?{p}.*(?:state_of_charge|soc)$")
-    results["voltage"] = volt_cand or find_ent(["sensor"], ["total_voltage", "battery_voltage", "voltage"], rf"bms_?{p}.*(?:total_voltage|battery_voltage)$")
-    results["current"] = find_ent(["sensor"], ["current", "battery_current"], rf"bms_?{p}.*(?<!balancing_)current$")
-    results["power"] = find_ent(["sensor"], ["power", "battery_power"], rf"bms_?{p}.*power$")
-    results["cell_delta"] = find_ent(["sensor"], ["delta_cell_voltage", "cell_delta", "delta_voltage"], rf"bms_?{p}.*delta.*(?:cell_voltage|voltage|delta)$")
-    results["cell_min"] = find_ent(["sensor"], ["min_cell_voltage", "cell_min"], rf"bms_?{p}.*min_cell_voltage$")
-    results["cell_max"] = find_ent(["sensor"], ["max_cell_voltage", "cell_max"], rf"bms_?{p}.*max_cell_voltage$")
+    prefix_re = rf"bms_?{p}" if p > 1 else rf"(?:bms_?1|bms_|jk_?bms|jkbms|daly|seplos|pylon)"
+    results["soc"] = soc_cand or find_ent(["sensor"], ["state_of_charge", "soc"], rf"{prefix_re}.*(?:state_of_charge|soc)$")
+    results["voltage"] = volt_cand or find_ent(["sensor"], ["total_voltage", "battery_voltage", "voltage"], rf"{prefix_re}.*(?:total_voltage|battery_voltage|voltage)$")
+    results["current"] = find_ent(["sensor"], ["current", "battery_current"], rf"{prefix_re}.*(?<!balancing_)current$")
+    results["power"] = find_ent(["sensor"], ["power", "battery_power"], rf"{prefix_re}.*power$")
+    results["cell_delta"] = find_ent(["sensor"], ["delta_cell_voltage", "cell_delta", "delta_voltage"], rf"{prefix_re}.*delta.*(?:cell_voltage|voltage|delta)$")
+    results["cell_min"] = find_ent(["sensor"], ["min_cell_voltage", "cell_min"], rf"{prefix_re}.*min_cell_voltage$")
+    results["cell_max"] = find_ent(["sensor"], ["max_cell_voltage", "cell_max"], rf"{prefix_re}.*max_cell_voltage$")
 
-    results["t1"] = find_ent(["sensor"], ["temperature_sensor_1", "temp_1", "t1", "temperature_1", "battery_temperature"], rf"bms_?{p}.*(?:temperature_sensor_1|temp_?1)$")
-    results["t2"] = find_ent(["sensor"], ["temperature_sensor_2", "temp_2", "t2", "temperature_2"], rf"bms_?{p}.*(?:temperature_sensor_2|temp_?2)$")
-    results["tmos"] = find_ent(["sensor"], ["power_tube_temperature", "mosfet_temperature", "tmos", "mosfet_temp"], rf"bms_?{p}.*(?:power_tube_temperature|mosfet_temperature|tmos)$")
+    results["t1"] = find_ent(["sensor"], ["temperature_sensor_1", "temp_1", "t1", "temperature_1", "battery_temperature"], rf"{prefix_re}.*(?:temperature_sensor_1|temp_?1)$")
+    results["t2"] = find_ent(["sensor"], ["temperature_sensor_2", "temp_2", "t2", "temperature_2"], rf"{prefix_re}.*(?:temperature_sensor_2|temp_?2)$")
+    results["tmos"] = find_ent(["sensor"], ["power_tube_temperature", "mosfet_temperature", "tmos", "mosfet_temp"], rf"{prefix_re}.*(?:power_tube_temperature|mosfet_temperature|tmos)$")
 
-    results["charging"] = find_ent(["binary_sensor", "switch"], ["charging"], rf"(?:binary_sensor|switch)\..*bms_?{p}.*(?<!dis)charging$")
-    results["discharging"] = find_ent(["binary_sensor", "switch"], ["discharging"], rf"(?:binary_sensor|switch)\..*bms_?{p}.*discharging$")
-    results["balancing"] = find_ent(["binary_sensor", "switch"], ["balancing", "balancer"], rf"(?:binary_sensor|switch)\..*bms_?{p}.*(?:balancing|balancer)$")
-    results["heating"] = find_ent(["binary_sensor", "switch"], ["heating"], rf"(?:binary_sensor|switch)\..*bms_?{p}.*heating$")
+    results["charging"] = find_ent(["binary_sensor", "switch"], ["charging"], rf"(?:binary_sensor|switch)\..*{prefix_re}.*(?<!dis)charging$")
+    results["discharging"] = find_ent(["binary_sensor", "switch"], ["discharging"], rf"(?:binary_sensor|switch)\..*{prefix_re}.*discharging$")
+    results["balancing"] = find_ent(["binary_sensor", "switch"], ["balancing", "balancer"], rf"(?:binary_sensor|switch)\..*{prefix_re}.*(?:balancing|balancer)$")
+    results["heating"] = find_ent(["binary_sensor", "switch"], ["heating"], rf"(?:binary_sensor|switch)\..*{prefix_re}.*heating$")
 
     cells_dict: dict[int, str] = {}
     for c in range(1, 17):
         suffixes = [f"cell_voltage_{c}", f"cell_{c}", f"cell_{c:02d}", f"celula_{c}"]
-        regex = rf"bms_?{p}.*(?:cell_voltage_|cell_|celula_){c}$"
+        regex = rf"{prefix_re}.*(?:cell_voltage_|cell_|celula_){c}$"
         cell_id = find_ent(["sensor"], suffixes, regex)
         if cell_id:
             cells_dict[c] = cell_id
@@ -893,6 +894,9 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
             has_batt = self._collected_data.get(CONF_HAS_BATTERY, self._val(CONF_HAS_BATTERY, True))
             if has_batt:
                 return await self.async_step_battery()
+            has_bms = self._collected_data.get(CONF_HAS_HA_BMS, self._val(CONF_HAS_HA_BMS, False))
+            if has_bms:
+                return await self.async_step_bms()
             return await self.async_step_grid()
 
         inv_count = int(self._collected_data.get(CONF_INVERTER_COUNT, self._val(CONF_INVERTER_COUNT, 1)))
@@ -1002,11 +1006,23 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> Any:
         """Step 4b: Options for BMS Packs."""
-        bms_count = int(self._collected_data.get(CONF_BMS_COUNT, self._val(CONF_BMS_COUNT, 1)))
+        bms_count = int(self._collected_data.get(CONF_BMS_COUNT, self._val(CONF_BMS_COUNT, 0) or 1))
 
         if user_input is not None:
             self._collected_data.update(user_input)
+            new_count = int(user_input.get(CONF_BMS_COUNT, bms_count))
+            if new_count != bms_count:
+                return await self.async_step_bms()
             return await self.async_step_grid()
+
+        # Auto-detect number of BMS packs if not yet customized
+        if CONF_BMS_COUNT not in self._collected_data and not self._val(CONF_BMS_COUNT):
+            detected_count = 1
+            all_eids = [s.entity_id.lower() for s in self.hass.states.async_all()]
+            for p_chk in range(2, 11):
+                if any(f"bms{p_chk}" in eid or f"bms_{p_chk}" in eid for eid in all_eids):
+                    detected_count = p_chk
+            bms_count = detected_count
 
         schema_dict: dict[Any, Any] = {
             vol.Required(CONF_BMS_COUNT, default=bms_count): vol.In({
@@ -1022,40 +1038,89 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         }
 
         for p in range(1, bms_count + 1):
-            cur_soc = self._val(f"bms_{p}_soc")
+            det = _auto_detect_bms_pack(self.hass, p)
+
+            # SOC & Electrical
+            cur_soc = self._val(f"bms_{p}_soc") or det.get("soc")
             schema_dict[vol.Optional(f"bms_{p}_soc", **({"default": cur_soc} if cur_soc else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="battery")
             )
 
-            cur_v = self._val(f"bms_{p}_voltage")
+            cur_v = self._val(f"bms_{p}_voltage") or det.get("voltage")
             schema_dict[vol.Optional(f"bms_{p}_voltage", **({"default": cur_v} if cur_v else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
             )
 
-            cur_c = self._val(f"bms_{p}_current")
+            cur_c = self._val(f"bms_{p}_current") or det.get("current")
             schema_dict[vol.Optional(f"bms_{p}_current", **({"default": cur_c} if cur_c else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="current")
             )
 
-            cur_p = self._val(f"bms_{p}_power")
+            cur_p = self._val(f"bms_{p}_power") or det.get("power")
             schema_dict[vol.Optional(f"bms_{p}_power", **({"default": cur_p} if cur_p else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="power")
             )
 
-            cur_delta = self._val(f"bms_{p}_cell_delta")
+            # Cell Diagnostics
+            cur_delta = self._val(f"bms_{p}_cell_delta") or det.get("cell_delta")
             schema_dict[vol.Optional(f"bms_{p}_cell_delta", **({"default": cur_delta} if cur_delta else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            cur_t1 = self._val(f"bms_{p}_t1")
+            cur_min = self._val(f"bms_{p}_cell_min") or det.get("cell_min")
+            schema_dict[vol.Optional(f"bms_{p}_cell_min", **({"default": cur_min} if cur_min else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            )
+
+            cur_max = self._val(f"bms_{p}_cell_max") or det.get("cell_max")
+            schema_dict[vol.Optional(f"bms_{p}_cell_max", **({"default": cur_max} if cur_max else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            )
+
+            # Temperatures
+            cur_t1 = self._val(f"bms_{p}_t1") or det.get("t1")
             schema_dict[vol.Optional(f"bms_{p}_t1", **({"default": cur_t1} if cur_t1 else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
             )
 
-            cur_tmos = self._val(f"bms_{p}_tmos")
+            cur_t2 = self._val(f"bms_{p}_t2") or det.get("t2")
+            schema_dict[vol.Optional(f"bms_{p}_t2", **({"default": cur_t2} if cur_t2 else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            )
+
+            cur_tmos = self._val(f"bms_{p}_tmos") or det.get("tmos")
             schema_dict[vol.Optional(f"bms_{p}_tmos", **({"default": cur_tmos} if cur_tmos else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
             )
+
+            # Switches / Binary sensors
+            cur_chg = self._val(f"bms_{p}_charging") or det.get("charging")
+            schema_dict[vol.Optional(f"bms_{p}_charging", **({"default": cur_chg} if cur_chg else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["binary_sensor", "switch"])
+            )
+
+            cur_dis = self._val(f"bms_{p}_discharging") or det.get("discharging")
+            schema_dict[vol.Optional(f"bms_{p}_discharging", **({"default": cur_dis} if cur_dis else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["binary_sensor", "switch"])
+            )
+
+            cur_bal = self._val(f"bms_{p}_balancing") or det.get("balancing")
+            schema_dict[vol.Optional(f"bms_{p}_balancing", **({"default": cur_bal} if cur_bal else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["binary_sensor", "switch"])
+            )
+
+            cur_heat = self._val(f"bms_{p}_heating") or det.get("heating")
+            schema_dict[vol.Optional(f"bms_{p}_heating", **({"default": cur_heat} if cur_heat else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["binary_sensor", "switch"])
+            )
+
+            # Cells 1 to 16
+            cells_map = det.get("cells", {})
+            for c in range(1, 17):
+                cur_c_val = self._val(f"bms_{p}_cell_{c}") or cells_map.get(c)
+                schema_dict[vol.Optional(f"bms_{p}_cell_{c}", **({"default": cur_c_val} if cur_c_val else {}))] = selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
+                )
 
         return self.async_show_form(
             step_id="bms",
