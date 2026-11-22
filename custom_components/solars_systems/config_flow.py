@@ -675,8 +675,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ("consum", "load", "battery", "baterie"),
             require_solar_context=True
         )
-        schema_dict[vol.Optional(CONF_SENSOR_PV_POWER, **({"default": tot_pv_cand} if tot_pv_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+        schema_dict[vol.Optional(CONF_SENSOR_PV_POWER, **({"default": _sc(self.hass, tot_pv_cand)} if _sc(self.hass, tot_pv_cand) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         # 2. Dynamic MPPT Voltage, Current & Power fields for each inverter
@@ -710,9 +710,9 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     tuple(v_kw),
                     ("batt", "baterie", "ac", "grid", "cell")
                 )
-                v_opts = {"default": v_cand} if v_cand else {}
+                v_opts = {"default": _sc(self.hass, v_cand)} if _sc(self.hass, v_cand) else {}
                 schema_dict[vol.Optional(v_key, **v_opts)] = selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+                    selector.EntitySelectorConfig(domain="sensor")
                 )
 
                 # 2.2 Current per MPPT
@@ -784,9 +784,9 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         tuple(p_mppt_kw),
                         ("consum", "load", "batt", "baterie")
                     )
-                    p_mppt_opts = {"default": p_mppt_cand} if p_mppt_cand else {}
+                    p_mppt_opts = {"default": _sc(self.hass, p_mppt_cand)} if _sc(self.hass, p_mppt_cand) else {}
                     schema_dict[vol.Optional(p_mppt_key, **p_mppt_opts)] = selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                        selector.EntitySelectorConfig(domain="sensor")
                     )
 
             # 2.4 Total Power per Inverter if multiple inverters
@@ -797,9 +797,9 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     (f"sensor.inverter_{inv}_pv_power", f"inverter_{inv}_pv_power", f"inv{inv}_power", f"inverter_{inv}_power", f"inverter {inv} power", f"putere_inv{inv}"),
                     ("consum", "load", "batt", "baterie")
                 )
-                p_opts = {"default": p_cand} if p_cand else {}
+                p_opts = {"default": _sc(self.hass, p_cand)} if _sc(self.hass, p_cand) else {}
                 schema_dict[vol.Optional(p_key, **p_opts)] = selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                    selector.EntitySelectorConfig(domain="sensor")
                 )
 
         # 3. Energy Production Sensors (Daily, Monthly, Yearly)
@@ -809,8 +809,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ("consum", "load", "pompa", "heat_pump", "retea", "grid"),
             require_solar_context=True
         )
-        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_TODAY, **({"default": e_today_cand} if e_today_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_TODAY, **({"default": _sc(self.hass, e_today_cand)} if _sc(self.hass, e_today_cand) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         e_month_cand = _auto_detect_candidate(
@@ -819,8 +819,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ("consum", "load", "pompa", "heat_pump", "retea", "grid"),
             require_solar_context=True
         )
-        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_MONTH, **({"default": e_month_cand} if e_month_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_MONTH, **({"default": _sc(self.hass, e_month_cand)} if _sc(self.hass, e_month_cand) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         e_year_cand = _auto_detect_candidate(
@@ -829,8 +829,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ("consum", "load", "pompa", "heat_pump", "retea", "grid"),
             require_solar_context=True
         )
-        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_YEAR, **({"default": e_year_cand} if e_year_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_YEAR, **({"default": _sc(self.hass, e_year_cand)} if _sc(self.hass, e_year_cand) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         return self.async_show_form(
@@ -900,7 +900,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             exclude_cells=True
         )
         schema_dict[vol.Optional(CONF_SENSOR_BATT_POWER, **({"default": batt_p_cand} if batt_p_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         return self.async_show_form(
@@ -1105,8 +1105,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ("sensor.total_load_power", "sensor.load_power", "sensor.axpert_max_load_power", "total_load_power", "load_power", "axpert_max_load_power", "putere_consum", "consum", "house_power", "home_power", "infinisolar_v_x_3_load_power"),
             ("solar", "pv", "battery", "baterie")
         )
-        schema_dict[vol.Optional(CONF_SENSOR_LOAD_POWER, **({"default": load_cand} if load_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+        schema_dict[vol.Optional(CONF_SENSOR_LOAD_POWER, **({"default": _sc(self.hass, load_cand)} if _sc(self.hass, load_cand) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         # 1.1 Grid / AC In Power (for Hybrid inverters, Smart Meters, Feed-In / Import)
@@ -1120,8 +1120,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
             ("battery", "baterie", "pv", "load", "consum", "cell")
         )
-        schema_dict[vol.Optional(CONF_SENSOR_GRID_POWER, **({"default": grid_pwr_cand} if grid_pwr_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+        schema_dict[vol.Optional(CONF_SENSOR_GRID_POWER, **({"default": _sc(self.hass, grid_pwr_cand)} if _sc(self.hass, grid_pwr_cand) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         # 2. Grid AC Voltage
@@ -1130,8 +1130,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ("sensor.inverter_1_grid_voltage", "sensor.grid_voltage", "sensor.axpert_max_grid_voltage", "inverter_1_grid_voltage", "grid_voltage", "axpert_max_grid_voltage", "tensiune_retea", "tensiuneacin", "ac_in_voltage", "grid_volt", "infinisolar_v_x_3_grid_voltage"),
             ("battery", "baterie", "pv", "cell")
         )
-        schema_dict[vol.Optional(CONF_SENSOR_GRID_VOLT, **({"default": grid_cand} if grid_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+        schema_dict[vol.Optional(CONF_SENSOR_GRID_VOLT, **({"default": _sc(self.hass, grid_cand)} if _sc(self.hass, grid_cand) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         # 3. AC Output Voltage
@@ -1140,8 +1140,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ("sensor.inverter_1_ac_output_voltage", "sensor.ac_output_voltage", "sensor.axpert_max_ac_output_voltage", "inverter_1_ac_output_voltage", "ac_output_voltage", "axpert_max_ac_output_voltage", "output_voltage", "tensiune_ac_out", "tensiuneacout", "inverter_out_voltage"),
             ("battery", "baterie", "pv", "grid", "retea", "cell")
         )
-        schema_dict[vol.Optional(CONF_SENSOR_AC_OUT_VOLT, **({"default": ac_out_cand} if ac_out_cand else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+        schema_dict[vol.Optional(CONF_SENSOR_AC_OUT_VOLT, **({"default": _sc(self.hass, ac_out_cand)} if _sc(self.hass, ac_out_cand) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         # 4. History Import & Live Update Interval
@@ -1285,7 +1285,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         cur_pv = self._val(CONF_SENSOR_PV_POWER)
         pv_opts = {"default": cur_pv} if cur_pv else {}
         schema_dict[vol.Optional(CONF_SENSOR_PV_POWER, **pv_opts)] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         # 2. Dynamic MPPT Voltages, Currents and Inverter Powers
@@ -1297,7 +1297,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                 cur_v = self._val(v_key)
                 f_opts = {"default": cur_v} if cur_v else {}
                 schema_dict[vol.Optional(v_key, **f_opts)] = selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+                    selector.EntitySelectorConfig(domain="sensor")
                 )
 
                 # Current
@@ -1314,7 +1314,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                     cur_p_mppt = self._val(p_mppt_key)
                     p_mppt_opts = {"default": cur_p_mppt} if cur_p_mppt else {}
                     schema_dict[vol.Optional(p_mppt_key, **p_mppt_opts)] = selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                        selector.EntitySelectorConfig(domain="sensor")
                     )
 
             if inv_count > 1:
@@ -1322,23 +1322,23 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                 cur_p = self._val(p_key)
                 p_opts = {"default": cur_p} if cur_p else {}
                 schema_dict[vol.Optional(p_key, **p_opts)] = selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                    selector.EntitySelectorConfig(domain="sensor")
                 )
 
         # 3. Energy Production Sensors
         cur_e_today = self._val(CONF_SENSOR_ENERGY_TODAY)
-        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_TODAY, **({"default": cur_e_today} if cur_e_today else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_TODAY, **({"default": cur_e_today} if _sc(self.hass, cur_e_today) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_e_month = self._val(CONF_SENSOR_ENERGY_MONTH)
-        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_MONTH, **({"default": cur_e_month} if cur_e_month else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_MONTH, **({"default": cur_e_month} if _sc(self.hass, cur_e_month) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_e_year = self._val(CONF_SENSOR_ENERGY_YEAR)
-        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_YEAR, **({"default": cur_e_year} if cur_e_year else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+        schema_dict[vol.Optional(CONF_SENSOR_ENERGY_YEAR, **({"default": cur_e_year} if _sc(self.hass, cur_e_year) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         return self.async_show_form(step_id="solar", data_schema=vol.Schema(schema_dict))
@@ -1380,7 +1380,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
 
         cur_pow = self._val(CONF_SENSOR_BATT_POWER)
         schema_dict[vol.Optional(CONF_SENSOR_BATT_POWER, **({"default": cur_pow} if cur_pow else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         return self.async_show_form(step_id="battery", data_schema=vol.Schema(schema_dict))
@@ -1595,22 +1595,22 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
 
         cur_load = self._val(CONF_SENSOR_LOAD_POWER)
         schema_dict[vol.Optional(CONF_SENSOR_LOAD_POWER, **({"default": cur_load} if cur_load else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_grid_pwr = self._val(CONF_SENSOR_GRID_POWER)
         schema_dict[vol.Optional(CONF_SENSOR_GRID_POWER, **({"default": cur_grid_pwr} if cur_grid_pwr else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_grid = self._val(CONF_SENSOR_GRID_VOLT)
         schema_dict[vol.Optional(CONF_SENSOR_GRID_VOLT, **({"default": cur_grid} if cur_grid else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_ac_out = self._val(CONF_SENSOR_AC_OUT_VOLT)
         schema_dict[vol.Optional(CONF_SENSOR_AC_OUT_VOLT, **({"default": cur_ac_out} if cur_ac_out else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="voltage")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         schema_dict[vol.Optional(CONF_UPDATE_INTERVAL, default=self._val(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL))] = vol.All(
