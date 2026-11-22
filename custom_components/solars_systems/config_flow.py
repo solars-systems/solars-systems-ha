@@ -172,8 +172,152 @@ def _auto_detect_candidate(
     return None
 
 
+def _discover_all_bms_clusters(hass) -> list[str]:
+    """Find all unique BMS clusters/prefixes in Home Assistant."""
+    states = list(hass.states.async_all())
+    clusters = []
+    seen = set()
+    soc_suffixes = ("_state_of_charge", "_soc", "_battery_state_of_charge", "_procent_baterie")
+    volt_suffixes = ("_total_voltage", "_battery_voltage", "_pack_voltage")
+
+    for s in states:
+        low = s.entity_id.lower()
+        if not low.startswith("sensor."):
+            continue
+        if any(neg in low for neg in ("invert", "inv", "phone", "ups", "telefon", "laptop", "cell", "celula")):
+            continue
+        for suf in soc_suffixes:
+            if suf in low:
+                base = low.split(".", 1)[1].split(suf)[0].rstrip("_")
+                if base and base not in seen:
+                    seen.add(base)
+                    clusters.append(base)
+                break
+
+    for s in states:
+        low = s.entity_id.lower()
+        if not low.startswith("sensor."):
+            continue
+        if any(neg in low for neg in ("invert", "inv", "phone", "ups", "telefon", "laptop", "cell", "celula")):
+            continue
+        for suf in volt_suffixes:
+            if suf in low:
+                base = low.split(".", 1)[1].split(suf)[0].rstrip("_")
+                if base and base not in seen:
+                    seen.add(base)
+                    clusters.append(base)
+                break
+
+    clusters.sort()
+    return clusters
+
+
+def _populate_bms_pack_from_base(hass, base_eid_or_prefix: str, p: int) -> dict[str, str]:
+    """Auto-populate all BMS fields for pack p given a single base entity or prefix."""
+    states = list(hass.states.async_all())
+    all_eids = [s.entity_id for s in states]
+
+    ent_name = base_eid_or_prefix.split(".", 1)[1] if "." in base_eid_or_prefix else base_eid_or_prefix
+    for suf in ("_state_of_charge", "_soc", "_total_voltage", "_battery_voltage", "_pack_voltage", "_voltage", "_voltaj", "_current", "_curent"):
+        if suf in ent_name:
+            ent_name = ent_name.split(suf)[0].rstrip("_")
+            break
+
+    candidates = [e for e in all_eids if ent_name.lower() in e.lower()]
+    res: dict[str, str] = {}
+
+    def match(keywords, exclude=()):
+        for c in candidates:
+            low = c.lower()
+            if any(ex in low for ex in exclude):
+                continue
+            if any(kw in low for kw in keywords):
+                return c
+        return None
+
+    res[f"bms_{p}_soc"] = match(["_state_of_charge", "_soc", "soc", "procent_baterie"])
+    res[f"bms_{p}_voltage"] = match(["_total_voltage", "_battery_voltage", "_voltage", "voltaj", "voltage"], exclude=["cell", "celula", "delta"])
+    res[f"bms_{p}_current"] = match(["_current", "curent", "current"], exclude=["balancing"])
+    res[f"bms_{p}_power"] = match(["_power", "power", "putere"])
+    res[f"bms_{p}_cell_delta"] = match(["delta_cell_voltage", "cell_delta", "delta"])
+    res[f"bms_{p}_cell_min"] = match(["cell_voltage_min", "min_cell", "cell_min"])
+    res[f"bms_{p}_cell_max"] = match(["cell_voltage_max", "max_cell", "cell_max"])
+    res[f"bms_{p}_t1"] = match(["temperature_sensor_1", "temp_1", "t1", "battery_temperature"])
+    res[f"bms_{p}_t2"] = match(["temperature_sensor_2", "temp_2", "t2"])
+    res[f"bms_{p}_tmos"] = match(["power_tube_temperature", "mosfet_temperature", "tmos", "mosfet_temp"])
+
+    for c_idx in range(1, 17):
+        cv = match([f"cell_voltage_{c_idx}", f"celula_{c_idx}", f"cell_{c_idx}"])
+        if cv:
+            res[f"bms_{p}_cell_{c_idx}"] = cv
+
+    return {k: v for k, v in res.items() if v}
+
+
+def _populate_heat_pump_from_base(hass, base_eid: str) -> dict[str, str]:
+    """Auto-populate all heat pump fields given a single entity belonging to the heat pump."""
+    states = list(hass.states.async_all())
+    all_eids = [s.entity_id for s in states]
+
+    ent_name = base_eid.split(".", 1)[1] if "." in base_eid else base_eid
+    prefix = ""
+    for kw in ("sunclima_modbus", "sunclima", "heat_pump", "heatpump", "pompa_caldura", "pompa_de_caldura", "pompa", "altherma", "aquarea", "nibe", "daikin"):
+        if kw in ent_name.lower():
+            parts = ent_name.lower().split(kw)
+            prefix = kw + (parts[1].split("_")[0] if len(parts) > 1 and parts[1].startswith("_") else "")
+            break
+    if not prefix:
+        for s in ("water_outlet", "water_inlet", "outlet", "inlet", "temp", "power", "energy", "flow"):
+            if s in ent_name.lower():
+                prefix = ent_name.lower().split(s)[0].rstrip("_")
+                break
+    if not prefix:
+        prefix = ent_name.split("_")[0]
+
+    candidates = [e for e in all_eids if prefix in e.lower()]
+    res: dict[str, str] = {}
+
+    def match(keywords, exclude=()):
+        for c in candidates:
+            low = c.lower()
+            if any(ex in low for ex in exclude):
+                continue
+            if any(kw in low for kw in keywords):
+                return c
+        return None
+
+    res[CONF_HP_TEMP_FLOW] = match(["water_outlet", "outlet_t7", "flow_temp", "temp_tur", "tur", "outlet"])
+    res[CONF_HP_TEMP_RETURN] = match(["water_inlet", "inlet_t8", "return_temp", "temp_retur", "retur", "inlet"])
+    res[CONF_HP_TEMP_DHW] = match(["water_tank", "tank_t5", "dhw", "boiler", "acm", "t5"])
+    res[CONF_HP_TEMP_BUFFER] = match(["buffer", "puffer", "temp_buffer", "t6"])
+    res[CONF_HP_TEMP_OUTDOOR] = match(["outdoor", "ambient", "exterior", "temp_t4", "t4"])
+    res[CONF_HP_FLOW_RATE] = match(["water_flow", "flow_rate", "debit"])
+    res[CONF_HP_COMP_FREQ] = match(["compressor_freq", "comp_freq", "comp_hz", "frecventa_compresor", "compressor"])
+    res[CONF_HP_COP] = match(["_cop", "cop", "instant_cop"])
+    res[CONF_HP_HEAT_POWER] = match(["thermal_power", "heat_power", "putere_termica", "thermal"])
+    res[CONF_HP_POWER] = match(["running_power", "active_power", "electric_power", "power", "putere"], exclude=["thermal", "heat"])
+    res[CONF_HP_ENERGY] = match(["energy", "energie", "total_energy", "kwh"])
+    res[CONF_HP_FAULT] = match(["fault", "error", "eroare", "alarm"])
+    res[CONF_HP_DEFROST] = match(["defrost", "degivrare"])
+    res[CONF_HP_STATUS] = match(["mode", "status", "stare", "run_state"])
+
+    return {k: v for k, v in res.items() if v}
+
 def _auto_detect_bms_pack(hass, p: int) -> dict[str, Any]:
-    """Auto-detect BMS entities (electrical, delta, temps) for pack p (v1.0.8 style, enhanced for 16 packs and dual-ESP units)."""
+    """Auto-detect BMS entities for pack p (cluster-aware)."""
+    clusters = _discover_all_bms_clusters(hass)
+    if p <= len(clusters):
+        pop = _populate_bms_pack_from_base(hass, clusters[p - 1], p)
+        return {
+            "soc": pop.get(f"bms_{p}_soc"),
+            "voltage": pop.get(f"bms_{p}_voltage"),
+            "current": pop.get(f"bms_{p}_current"),
+            "power": pop.get(f"bms_{p}_power"),
+            "cell_delta": pop.get(f"bms_{p}_cell_delta"),
+            "t1": pop.get(f"bms_{p}_t1"),
+            "tmos": pop.get(f"bms_{p}_tmos")
+        }
+
     results: dict[str, Any] = {}
     states = list(hass.states.async_all())
     all_eids = [s.entity_id for s in states]
@@ -280,8 +424,31 @@ def _auto_detect_bms_pack(hass, p: int) -> dict[str, Any]:
 
 def _auto_detect_heat_pump(hass) -> dict[str, Any]:
     """Auto-detect heat pump sensors (power, energy, temps, debit, cop, state, faults)."""
-    results: dict[str, Any] = {}
     states = list(hass.states.async_all())
+    # 1. First check if any sunclima or heatpump entity exists
+    for s in states:
+        low = s.entity_id.lower()
+        if any(hp_k in low for hp_k in ("sunclima", "heat_pump", "heatpump", "pompa_caldura", "pompa_de_caldura", "altherma", "aquarea")):
+            pop = _populate_heat_pump_from_base(hass, s.entity_id)
+            if pop.get(CONF_HP_TEMP_FLOW) or pop.get(CONF_HP_POWER) or pop.get(CONF_HP_TEMP_RETURN):
+                return {
+                    "power": pop.get(CONF_HP_POWER),
+                    "energy": pop.get(CONF_HP_ENERGY),
+                    "temp_flow": pop.get(CONF_HP_TEMP_FLOW),
+                    "temp_return": pop.get(CONF_HP_TEMP_RETURN),
+                    "temp_dhw": pop.get(CONF_HP_TEMP_DHW),
+                    "temp_buffer": pop.get(CONF_HP_TEMP_BUFFER),
+                    "temp_outdoor": pop.get(CONF_HP_TEMP_OUTDOOR),
+                    "flow_rate": pop.get(CONF_HP_FLOW_RATE),
+                    "heat_power": pop.get(CONF_HP_HEAT_POWER),
+                    "cop": pop.get(CONF_HP_COP),
+                    "comp_freq": pop.get(CONF_HP_COMP_FREQ),
+                    "status": pop.get(CONF_HP_STATUS),
+                    "defrost": pop.get(CONF_HP_DEFROST),
+                    "fault": pop.get(CONF_HP_FAULT),
+                }
+
+    results: dict[str, Any] = {}
 
     hp_keywords = (
         "heat_pump", "heatpump", "pompa_caldura", "pompa_de_caldura",
@@ -728,6 +895,13 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         bms_count = int(self._collected_data.get(CONF_BMS_COUNT, self._layout.get(CONF_BMS_COUNT, 1)))
 
         if user_input is not None:
+            for p_idx in range(1, bms_count + 1):
+                ref_eid = user_input.get(f"bms_{p_idx}_soc") or user_input.get(f"bms_{p_idx}_voltage")
+                if ref_eid:
+                    pack_pop = _populate_bms_pack_from_base(self.hass, ref_eid, p_idx)
+                    for k, v in pack_pop.items():
+                        if not user_input.get(k):
+                            user_input[k] = v
             self._collected_data.update(user_input)
             new_count = int(user_input.get(CONF_BMS_COUNT, bms_count))
             if new_count != bms_count:
@@ -796,6 +970,12 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            ref_eid = user_input.get(CONF_HP_TEMP_FLOW) or user_input.get(CONF_HP_POWER)
+            if ref_eid:
+                hp_pop = _populate_heat_pump_from_base(self.hass, ref_eid)
+                for k, v in hp_pop.items():
+                    if not user_input.get(k):
+                        user_input[k] = v
             self._collected_data.update(user_input)
             return await self.async_step_grid()
 
@@ -962,21 +1142,30 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> SolarsSystemsOptionsFlowHandler:
         """Create the options flow."""
-        return SolarsSystemsOptionsFlowHandler()
+        return SolarsSystemsOptionsFlowHandler(config_entry)
 
 
 class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for modifying mapped sensors and settings without reinstalling."""
 
-    def __init__(self) -> None:
+    def __init__(self, config_entry: config_entries.ConfigEntry | None = None) -> None:
         """Initialize options flow."""
         super().__init__()
+        self._config_entry = config_entry
         self._collected_data: dict[str, Any] = {}
 
     def _val(self, key: str, default: Any = None) -> Any:
+        entry = getattr(self, "_config_entry", None)
+        if not entry:
+            try:
+                entry = self.config_entry
+            except Exception:
+                entry = None
         combined = {}
-        if hasattr(self, "config_entry") and self.config_entry:
-            combined = {**dict(self.config_entry.data), **dict(self.config_entry.options)}
+        if entry:
+            combined = {**dict(entry.data or {}), **dict(entry.options or {})}
+        if key in self._collected_data:
+            return self._collected_data[key]
         return combined.get(key, default)
 
     async def async_step_init(
@@ -1171,6 +1360,13 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         bms_count = int(self._collected_data.get(CONF_BMS_COUNT, self._val(CONF_BMS_COUNT, 0) or 1))
 
         if user_input is not None:
+            for p_idx in range(1, bms_count + 1):
+                ref_eid = user_input.get(f"bms_{p_idx}_soc") or user_input.get(f"bms_{p_idx}_voltage")
+                if ref_eid:
+                    pack_pop = _populate_bms_pack_from_base(self.hass, ref_eid, p_idx)
+                    for k, v in pack_pop.items():
+                        if not user_input.get(k):
+                            user_input[k] = v
             self._collected_data.update(user_input)
             new_count = int(user_input.get(CONF_BMS_COUNT, bms_count))
             if new_count != bms_count:
@@ -1200,44 +1396,51 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         }
 
         for p in range(1, bms_count + 1):
-            det = _auto_detect_bms_pack(self.hass, p)
+            saved_soc = self._val(f"bms_{p}_soc")
+            saved_v = self._val(f"bms_{p}_voltage")
+            saved_c = self._val(f"bms_{p}_current")
+            saved_p = self._val(f"bms_{p}_power")
+            saved_delta = self._val(f"bms_{p}_cell_delta")
+            saved_t1 = self._val(f"bms_{p}_t1")
+            saved_tmos = self._val(f"bms_{p}_tmos")
 
-            # SOC & Electrical (v1.0.8 style)
-            cur_soc = self._val(f"bms_{p}_soc") or det.get("soc")
+            det = {}
+            if not (saved_soc or saved_v):
+                det = _auto_detect_bms_pack(self.hass, p)
+
+            cur_soc = saved_soc or det.get("soc")
             schema_dict[vol.Optional(f"bms_{p}_soc", **({"default": cur_soc} if cur_soc else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            cur_v = self._val(f"bms_{p}_voltage") or det.get("voltage")
+            cur_v = saved_v or det.get("voltage")
             schema_dict[vol.Optional(f"bms_{p}_voltage", **({"default": cur_v} if cur_v else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            cur_c = self._val(f"bms_{p}_current") or det.get("current")
+            cur_c = saved_c or det.get("current")
             schema_dict[vol.Optional(f"bms_{p}_current", **({"default": cur_c} if cur_c else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            cur_p = self._val(f"bms_{p}_power") or det.get("power")
+            cur_p = saved_p or det.get("power")
             schema_dict[vol.Optional(f"bms_{p}_power", **({"default": cur_p} if cur_p else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            # Cell Diagnostics
-            cur_delta = self._val(f"bms_{p}_cell_delta") or det.get("cell_delta")
+            cur_delta = saved_delta or det.get("cell_delta")
             schema_dict[vol.Optional(f"bms_{p}_cell_delta", **({"default": cur_delta} if cur_delta else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            # Temperatures
-            cur_t1 = self._val(f"bms_{p}_t1") or det.get("t1")
+            cur_t1 = saved_t1 or det.get("t1")
             schema_dict[vol.Optional(f"bms_{p}_t1", **({"default": cur_t1} if cur_t1 else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+                selector.EntitySelectorConfig(domain="sensor")
             )
 
-            cur_tmos = self._val(f"bms_{p}_tmos") or det.get("tmos")
+            cur_tmos = saved_tmos or det.get("tmos")
             schema_dict[vol.Optional(f"bms_{p}_tmos", **({"default": cur_tmos} if cur_tmos else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+                selector.EntitySelectorConfig(domain="sensor")
             )
 
         return self.async_show_form(
@@ -1250,13 +1453,26 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
     ) -> Any:
         """Step 4c: Options for Heat Pump & HVAC."""
         if user_input is not None:
+            ref_eid = user_input.get(CONF_HP_TEMP_FLOW) or user_input.get(CONF_HP_POWER)
+            if ref_eid:
+                hp_pop = _populate_heat_pump_from_base(self.hass, ref_eid)
+                for k, v in hp_pop.items():
+                    if not user_input.get(k):
+                        user_input[k] = v
             self._collected_data.update(user_input)
             return await self.async_step_grid()
 
-        det = _auto_detect_heat_pump(self.hass)
+        saved_flow = self._val(CONF_HP_TEMP_FLOW)
+        saved_pwr = self._val(CONF_HP_POWER)
+        saved_ret = self._val(CONF_HP_TEMP_RETURN)
+
+        det = {}
+        if not (saved_flow or saved_pwr or saved_ret):
+            det = _auto_detect_heat_pump(self.hass)
+
         schema_dict: dict[Any, Any] = {}
 
-        cur_pwr = self._val(CONF_HP_POWER) or det.get("power")
+        cur_pwr = saved_pwr or det.get("power")
         schema_dict[vol.Optional(CONF_HP_POWER, **({"default": cur_pwr} if cur_pwr else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         )
