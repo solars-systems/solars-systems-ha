@@ -215,7 +215,8 @@ def _discover_all_bms_clusters(hass) -> list[str]:
 def _populate_bms_pack_from_base(hass, base_eid_or_prefix: str, p: int) -> dict[str, str]:
     """Auto-populate all BMS fields for pack p given a single base entity or prefix."""
     states = list(hass.states.async_all())
-    all_eids = [s.entity_id for s in states]
+    # Crucial: BMS inputs strictly belong to the 'sensor' domain
+    all_eids = [s.entity_id for s in states if s.entity_id.startswith("sensor.")]
 
     ent_name = base_eid_or_prefix.split(".", 1)[1] if "." in base_eid_or_prefix else base_eid_or_prefix
     for suf in ("_state_of_charge", "_soc", "_total_voltage", "_battery_voltage", "_pack_voltage", "_voltage", "_voltaj", "_current", "_curent"):
@@ -227,23 +228,33 @@ def _populate_bms_pack_from_base(hass, base_eid_or_prefix: str, p: int) -> dict[
     res: dict[str, str] = {}
 
     def match(keywords, exclude=()):
-        for c in candidates:
-            low = c.lower()
-            if any(ex in low for ex in exclude):
-                continue
-            if any(kw in low for kw in keywords):
-                return c
+        for kw in keywords:
+            for c in candidates:
+                low = c.lower()
+                if any(ex in low for ex in exclude):
+                    continue
+                if kw in low:
+                    return c
         return None
 
     res[f"bms_{p}_soc"] = match(["_state_of_charge", "_soc", "soc", "procent_baterie"])
-    res[f"bms_{p}_voltage"] = match(["_total_voltage", "_battery_voltage", "_voltage", "voltaj", "voltage"], exclude=["cell", "celula", "delta"])
-    res[f"bms_{p}_current"] = match(["_current", "curent", "current"], exclude=["balancing"])
-    res[f"bms_{p}_power"] = match(["_power", "power", "putere"])
+    res[f"bms_{p}_voltage"] = match(
+        ["_total_voltage", "_battery_voltage", "_pack_voltage", "_voltage", "voltaj", "voltage"],
+        exclude=["cell", "celula", "delta", "trigger", "calibration", "off", "limit", "setting", "alarm", "min", "max", "protect"]
+    )
+    res[f"bms_{p}_current"] = match(
+        ["_current", "curent", "current"],
+        exclude=["balancing", "calibration", "trigger", "limit", "setting", "alarm", "protect"]
+    )
+    res[f"bms_{p}_power"] = match(
+        ["_power", "power", "putere"],
+        exclude=["power_off", "power_on", "switch", "factor", "setting", "limit"]
+    )
     res[f"bms_{p}_cell_delta"] = match(["delta_cell_voltage", "cell_delta", "delta"])
     res[f"bms_{p}_cell_min"] = match(["cell_voltage_min", "min_cell", "cell_min"])
     res[f"bms_{p}_cell_max"] = match(["cell_voltage_max", "max_cell", "cell_max"])
-    res[f"bms_{p}_t1"] = match(["temperature_sensor_1", "temp_1", "t1", "battery_temperature"])
-    res[f"bms_{p}_t2"] = match(["temperature_sensor_2", "temp_2", "t2"])
+    res[f"bms_{p}_t1"] = match(["temperature_sensor_1", "temp_1", "t1", "battery_temperature"], exclude=["mos", "power_tube"])
+    res[f"bms_{p}_t2"] = match(["temperature_sensor_2", "temp_2", "t2"], exclude=["mos", "power_tube"])
     res[f"bms_{p}_tmos"] = match(["power_tube_temperature", "mosfet_temperature", "tmos", "mosfet_temp"])
 
     for c_idx in range(1, 17):
@@ -251,7 +262,7 @@ def _populate_bms_pack_from_base(hass, base_eid_or_prefix: str, p: int) -> dict[
         if cv:
             res[f"bms_{p}_cell_{c_idx}"] = cv
 
-    return {k: v for k, v in res.items() if v}
+    return {k: v for k, v in res.items() if v and v.startswith("sensor.")}
 
 
 def _populate_heat_pump_from_base(hass, base_eid: str) -> dict[str, str]:
@@ -911,7 +922,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if ref_eid:
                     pack_pop = _populate_bms_pack_from_base(self.hass, ref_eid, p_idx)
                     for k, v in pack_pop.items():
-                        if not user_input.get(k):
+                        if v and v.startswith("sensor.") and not user_input.get(k):
                             user_input[k] = v
             self._collected_data.update(user_input)
             new_count = int(user_input.get(CONF_BMS_COUNT, bms_count))
@@ -938,34 +949,44 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             })
         }
 
+        def _sc(val):
+            return val if (val and isinstance(val, str) and val.startswith("sensor.")) else None
+
         for p in range(1, bms_count + 1):
             det = _auto_detect_bms_pack(self.hass, p)
 
-            # SOC & Electrical (v1.0.8 style)
-            schema_dict[vol.Optional(f"bms_{p}_soc", **({"default": det["soc"]} if det.get("soc") else {}))] = selector.EntitySelector(
+            # SOC & Electrical (strictly sensor domain)
+            d_soc = _sc(det.get("soc"))
+            schema_dict[vol.Optional(f"bms_{p}_soc", **({"default": d_soc} if d_soc else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
-            schema_dict[vol.Optional(f"bms_{p}_voltage", **({"default": det["voltage"]} if det.get("voltage") else {}))] = selector.EntitySelector(
+            d_v = _sc(det.get("voltage"))
+            schema_dict[vol.Optional(f"bms_{p}_voltage", **({"default": d_v} if d_v else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
-            schema_dict[vol.Optional(f"bms_{p}_current", **({"default": det["current"]} if det.get("current") else {}))] = selector.EntitySelector(
+            d_c = _sc(det.get("current"))
+            schema_dict[vol.Optional(f"bms_{p}_current", **({"default": d_c} if d_c else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
-            schema_dict[vol.Optional(f"bms_{p}_power", **({"default": det["power"]} if det.get("power") else {}))] = selector.EntitySelector(
+            d_p = _sc(det.get("power"))
+            schema_dict[vol.Optional(f"bms_{p}_power", **({"default": d_p} if d_p else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
             # Cell Diagnostics
-            schema_dict[vol.Optional(f"bms_{p}_cell_delta", **({"default": det["cell_delta"]} if det.get("cell_delta") else {}))] = selector.EntitySelector(
+            d_delta = _sc(det.get("cell_delta"))
+            schema_dict[vol.Optional(f"bms_{p}_cell_delta", **({"default": d_delta} if d_delta else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
             # Temperatures
-            schema_dict[vol.Optional(f"bms_{p}_t1", **({"default": det["t1"]} if det.get("t1") else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            d_t1 = _sc(det.get("t1"))
+            schema_dict[vol.Optional(f"bms_{p}_t1", **({"default": d_t1} if d_t1 else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
             )
-            schema_dict[vol.Optional(f"bms_{p}_tmos", **({"default": det["tmos"]} if det.get("tmos") else {}))] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            d_tmos = _sc(det.get("tmos"))
+            schema_dict[vol.Optional(f"bms_{p}_tmos", **({"default": d_tmos} if d_tmos else {}))] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
             )
 
         return self.async_show_form(
@@ -1376,7 +1397,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                 if ref_eid:
                     pack_pop = _populate_bms_pack_from_base(self.hass, ref_eid, p_idx)
                     for k, v in pack_pop.items():
-                        if not user_input.get(k):
+                        if v and v.startswith("sensor.") and not user_input.get(k):
                             user_input[k] = v
             self._collected_data.update(user_input)
             new_count = int(user_input.get(CONF_BMS_COUNT, bms_count))
@@ -1415,41 +1436,44 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
             saved_t1 = self._val(f"bms_{p}_t1")
             saved_tmos = self._val(f"bms_{p}_tmos")
 
+            def _sc(val):
+                return val if (val and isinstance(val, str) and val.startswith("sensor.")) else None
+
             det = {}
             if not (saved_soc or saved_v):
                 det = _auto_detect_bms_pack(self.hass, p)
 
-            cur_soc = saved_soc or det.get("soc")
+            cur_soc = _sc(saved_soc or det.get("soc"))
             schema_dict[vol.Optional(f"bms_{p}_soc", **({"default": cur_soc} if cur_soc else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            cur_v = saved_v or det.get("voltage")
+            cur_v = _sc(saved_v or det.get("voltage"))
             schema_dict[vol.Optional(f"bms_{p}_voltage", **({"default": cur_v} if cur_v else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            cur_c = saved_c or det.get("current")
+            cur_c = _sc(saved_c or det.get("current"))
             schema_dict[vol.Optional(f"bms_{p}_current", **({"default": cur_c} if cur_c else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            cur_p = saved_p or det.get("power")
+            cur_p = _sc(saved_p or det.get("power"))
             schema_dict[vol.Optional(f"bms_{p}_power", **({"default": cur_p} if cur_p else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            cur_delta = saved_delta or det.get("cell_delta")
+            cur_delta = _sc(saved_delta or det.get("cell_delta"))
             schema_dict[vol.Optional(f"bms_{p}_cell_delta", **({"default": cur_delta} if cur_delta else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            cur_t1 = saved_t1 or det.get("t1")
+            cur_t1 = _sc(saved_t1 or det.get("t1"))
             schema_dict[vol.Optional(f"bms_{p}_t1", **({"default": cur_t1} if cur_t1 else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
 
-            cur_tmos = saved_tmos or det.get("tmos")
+            cur_tmos = _sc(saved_tmos or det.get("tmos"))
             schema_dict[vol.Optional(f"bms_{p}_tmos", **({"default": cur_tmos} if cur_tmos else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
