@@ -102,6 +102,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 unit = state.attributes.get("unit_of_measurement", "")
                 if unit == "kW":
                     val = round(val * 1000.0, 1)
+                elif unit == "Wh":
+                    if key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_ENERGY_MONTH, CONF_SENSOR_ENERGY_YEAR):
+                        val = round(val / 1000.0, 3)
+                elif unit == "MWh":
+                    if key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_ENERGY_MONTH, CONF_SENSOR_ENERGY_YEAR):
+                        val = round(val * 1000.0, 3)
+            # Failsafe: if daily energy value > 1000, it is sent in raw Wh (e.g. 209639 Wh)
+            if val is not None and key == CONF_SENSOR_ENERGY_TODAY and val > 1000:
+                val = round(val / 1000.0, 2)
             return val
 
         def get_bool_val(key: str) -> bool | None:
