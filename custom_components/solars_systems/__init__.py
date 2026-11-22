@@ -120,6 +120,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 if val is not None:
                     payload[k] = val
 
+        # Auto-alias curentPV{inv}_1 to curentPV{inv} if present
+        for inv in range(1, 13):
+            if f"curentPV{inv}_1" in payload and f"curentPV{inv}" not in payload:
+                payload[f"curentPV{inv}"] = payload[f"curentPV{inv}_1"]
+
         # Auto-compute total puterePV{inv} if sub-MPPT powers (puterePV{inv}_1, puterePV{inv}_2...) exist but total puterePV{inv} is not specified
         for inv in range(1, 13):
             sub_mppts = [v for k, v in payload.items() if (k.startswith(f"puterePV{inv}_") and isinstance(v, (int, float)))]
