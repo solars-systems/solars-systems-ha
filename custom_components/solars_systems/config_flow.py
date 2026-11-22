@@ -274,11 +274,13 @@ def _populate_heat_pump_from_base(hass, base_eid: str) -> dict[str, str]:
     if not prefix:
         prefix = ent_name.split("_")[0]
 
-    candidates = [e for e in all_eids if prefix in e.lower()]
+    all_hp_cands = [e for e in all_eids if prefix in e.lower()]
+    sensor_cands = [e for e in all_hp_cands if e.lower().startswith("sensor.")]
+
     res: dict[str, str] = {}
 
-    def match(keywords, exclude=()):
-        for c in candidates:
+    def match(cands, keywords, exclude=()):
+        for c in cands:
             low = c.lower()
             if any(ex in low for ex in exclude):
                 continue
@@ -286,20 +288,21 @@ def _populate_heat_pump_from_base(hass, base_eid: str) -> dict[str, str]:
                 return c
         return None
 
-    res[CONF_HP_TEMP_FLOW] = match(["water_outlet", "outlet_t7", "flow_temp", "temp_tur", "tur", "outlet"])
-    res[CONF_HP_TEMP_RETURN] = match(["water_inlet", "inlet_t8", "return_temp", "temp_retur", "retur", "inlet"])
-    res[CONF_HP_TEMP_DHW] = match(["water_tank", "tank_t5", "dhw", "boiler", "acm", "t5"])
-    res[CONF_HP_TEMP_BUFFER] = match(["buffer", "puffer", "temp_buffer", "t6"])
-    res[CONF_HP_TEMP_OUTDOOR] = match(["outdoor", "ambient", "exterior", "temp_t4", "t4"])
-    res[CONF_HP_FLOW_RATE] = match(["water_flow", "flow_rate", "debit"])
-    res[CONF_HP_COMP_FREQ] = match(["compressor_freq", "comp_freq", "comp_hz", "frecventa_compresor", "compressor"])
-    res[CONF_HP_COP] = match(["_cop", "cop", "instant_cop"])
-    res[CONF_HP_HEAT_POWER] = match(["thermal_power", "heat_power", "putere_termica", "thermal"])
-    res[CONF_HP_POWER] = match(["running_power", "active_power", "electric_power", "power", "putere"], exclude=["thermal", "heat"])
-    res[CONF_HP_ENERGY] = match(["energy", "energie", "total_energy", "kwh"])
-    res[CONF_HP_FAULT] = match(["fault", "error", "eroare", "alarm"])
-    res[CONF_HP_DEFROST] = match(["defrost", "degivrare"])
-    res[CONF_HP_STATUS] = match(["mode", "status", "stare", "run_state"])
+    # Temperatures MUST ONLY MATCH sensor_cands (never binary_sensors!)
+    res[CONF_HP_TEMP_FLOW] = match(sensor_cands, ["water_outlet", "outlet_t7", "flow_temp", "temp_tur", "tur", "outlet"], exclude=["fan", "status", "switch"])
+    res[CONF_HP_TEMP_RETURN] = match(sensor_cands, ["water_inlet", "inlet_t8", "inlet_t6", "return_temp", "temp_retur", "retur", "inlet"], exclude=["fan", "status", "switch"])
+    res[CONF_HP_TEMP_DHW] = match(sensor_cands, ["water_tank", "tank_t5", "dhw", "boiler", "acm", "t5"], exclude=["fan", "status", "switch"])
+    res[CONF_HP_TEMP_BUFFER] = match(sensor_cands, ["buffer", "puffer", "temp_buffer", "t6"], exclude=["fan", "status", "switch"])
+    res[CONF_HP_TEMP_OUTDOOR] = match(sensor_cands, ["outdoor_temp", "ambient_temp", "temp_outdoor", "temp_ambient", "exterior_temp", "outdoor_temperature", "temp_t4", "t4", "sc_outdoor", "sc_ambient"], exclude=["fan", "ventilator", "status", "switch", "binary_sensor", "heater", "pump", "health"])
+    res[CONF_HP_FLOW_RATE] = match(sensor_cands, ["water_flow", "flow_rate", "debit"], exclude=["health", "index"])
+    res[CONF_HP_COMP_FREQ] = match(sensor_cands, ["compressor_freq", "comp_freq", "comp_hz", "frecventa_compresor", "compressor"], exclude=["target", "tracking", "health", "index"])
+    res[CONF_HP_COP] = match(sensor_cands, ["_cop", "cop", "instant_cop"], exclude=["health", "index", "target", "tracking"])
+    res[CONF_HP_HEAT_POWER] = match(sensor_cands, ["thermal_power", "heat_power", "putere_termica", "thermal"], exclude=["index", "health", "target", "tracking"])
+    res[CONF_HP_POWER] = match(sensor_cands, ["running_power", "active_power", "electric_power", "power", "putere"], exclude=["thermal", "heat", "index", "health", "target"])
+    res[CONF_HP_ENERGY] = match(sensor_cands, ["energy", "energie", "total_energy", "kwh"], exclude=["index", "health"])
+    res[CONF_HP_FAULT] = match(all_hp_cands, ["fault", "error", "eroare", "alarm"])
+    res[CONF_HP_DEFROST] = match(all_hp_cands, ["defrost_active", "defrosting", "defrost", "degivrare"], exclude=["health", "time", "interval", "cycle"])
+    res[CONF_HP_STATUS] = match(all_hp_cands, ["mode", "status", "stare", "run_state"], exclude=["fan", "ventilator", "health"])
 
     return {k: v for k, v in res.items() if v}
 
@@ -734,6 +737,14 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     tuple(c_kw),
                     ("batt", "baterie", "ac", "grid")
                 )
+                # If current not found by keywords, try deriving from detected voltage entity!
+                if not c_cand and v_cand:
+                    for v_word, c_word in (("voltage", "current"), ("voltaj", "curent"), ("volt", "current"), ("_v_", "_c_"), ("_v", "_c")):
+                        if v_word in v_cand:
+                            der_c = v_cand.replace(v_word, c_word)
+                            if self.hass.states.get(der_c) is not None:
+                                c_cand = der_c
+                                break
                 c_opts = {"default": c_cand} if c_cand else {}
                 schema_dict[vol.Optional(c_key, **c_opts)] = selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor")
@@ -1019,7 +1030,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             selector.EntitySelectorConfig(domain=["climate", "sensor"])
         )
         schema_dict[vol.Optional(CONF_HP_DEFROST, **({"default": det["defrost"]} if det.get("defrost") else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain=["binary_sensor", "switch"])
+            selector.EntitySelectorConfig(domain=["binary_sensor", "switch", "sensor"])
         )
         schema_dict[vol.Optional(CONF_HP_FAULT, **({"default": det["fault"]} if det.get("fault") else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain=["binary_sensor", "sensor"])
@@ -1534,7 +1545,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
 
         cur_def = self._val(CONF_HP_DEFROST) or det.get("defrost")
         schema_dict[vol.Optional(CONF_HP_DEFROST, **({"default": cur_def} if cur_def else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain=["binary_sensor", "switch"])
+            selector.EntitySelectorConfig(domain=["binary_sensor", "switch", "sensor"])
         )
 
         cur_flt = self._val(CONF_HP_FAULT) or det.get("fault")
