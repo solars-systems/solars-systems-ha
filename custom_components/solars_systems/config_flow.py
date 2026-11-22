@@ -290,33 +290,36 @@ def _auto_detect_heat_pump(hass) -> dict[str, Any]:
     )
 
     def find_hp_sensor(domain: str, keywords: tuple[str, ...], device_class: str | None = None) -> str | None:
+        if device_class:
+            for s in states:
+                eid = s.entity_id.lower()
+                if not eid.startswith(f"{domain}."):
+                    continue
+                if s.attributes.get("device_class") == device_class and any(hp_k in eid for hp_k in hp_keywords):
+                    if any(kw in eid for kw in keywords):
+                        return s.entity_id
         for s in states:
             eid = s.entity_id.lower()
             if not eid.startswith(f"{domain}."):
-                continue
-            if device_class and s.attributes.get("device_class") != device_class:
                 continue
             if any(hp_k in eid for hp_k in hp_keywords):
                 if any(kw in eid for kw in keywords):
                     return s.entity_id
-
         for s in states:
             eid = s.entity_id.lower()
             if not eid.startswith(f"{domain}."):
-                continue
-            if device_class and s.attributes.get("device_class") != device_class:
                 continue
             if any(kw in eid for kw in keywords):
                 return s.entity_id
         return None
 
-    results["power"] = find_hp_sensor("sensor", ("power", "putere", "active_power"), device_class="power")
+    results["power"] = find_hp_sensor("sensor", ("power", "putere", "active_power", "consum"), device_class="power")
     results["energy"] = find_hp_sensor("sensor", ("energy", "energie", "total_energy"), device_class="energy")
-    results["temp_flow"] = find_hp_sensor("sensor", ("water_outlet", "outlet_temp", "flow_temp", "tur_apa", "temp_tur", "supply_temp", "leaving_water"), device_class="temperature")
-    results["temp_return"] = find_hp_sensor("sensor", ("water_inlet", "inlet_temp", "return_temp", "retur_apa", "temp_retur", "entering_water"), device_class="temperature")
-    results["temp_dhw"] = find_hp_sensor("sensor", ("water_tank", "tank_temp", "dhw_temp", "temp_dhw", "boiler_temp", "temp_boiler", "acm_temp", "temp_acm"), device_class="temperature")
-    results["temp_buffer"] = find_hp_sensor("sensor", ("buffer_tank", "buffer_temp", "temp_buffer", "puffer_temp", "temp_puffer"), device_class="temperature")
-    results["temp_outdoor"] = find_hp_sensor("sensor", ("outdoor_temp", "temp_outdoor", "ambient_temp", "temp_ambient", "exterior_temp", "temp_exterior"), device_class="temperature")
+    results["temp_flow"] = find_hp_sensor("sensor", ("water_outlet", "outlet_temp", "flow_temp", "tur_apa", "temp_tur", "supply_temp", "leaving_water", "water_outlet_t7"))
+    results["temp_return"] = find_hp_sensor("sensor", ("water_inlet", "inlet_temp", "return_temp", "retur_apa", "temp_retur", "entering_water", "water_inlet_t8"))
+    results["temp_dhw"] = find_hp_sensor("sensor", ("water_tank", "tank_temp", "dhw_temp", "temp_dhw", "boiler_temp", "temp_boiler", "acm_temp", "temp_acm"))
+    results["temp_buffer"] = find_hp_sensor("sensor", ("buffer_tank", "buffer_temp", "temp_buffer", "puffer_temp", "temp_puffer"))
+    results["temp_outdoor"] = find_hp_sensor("sensor", ("outdoor_temp", "temp_outdoor", "ambient_temp", "temp_ambient", "exterior_temp", "temp_exterior"))
     results["flow_rate"] = find_hp_sensor("sensor", ("flow_rate", "water_flow", "debit_apa", "debit"))
     results["heat_power"] = find_hp_sensor("sensor", ("thermal_power", "heat_power", "output_heat", "putere_termica", "putere_term"))
     results["cop"] = find_hp_sensor("sensor", ("cop", "instant_cop", "performance_coefficient"))
@@ -800,25 +803,25 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema_dict: dict[Any, Any] = {}
 
         schema_dict[vol.Optional(CONF_HP_POWER, **({"default": det["power"]} if det.get("power") else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            selector.EntitySelectorConfig(domain="sensor")
         )
         schema_dict[vol.Optional(CONF_HP_ENERGY, **({"default": det["energy"]} if det.get("energy") else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+            selector.EntitySelectorConfig(domain="sensor")
         )
         schema_dict[vol.Optional(CONF_HP_TEMP_FLOW, **({"default": det["temp_flow"]} if det.get("temp_flow") else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            selector.EntitySelectorConfig(domain="sensor")
         )
         schema_dict[vol.Optional(CONF_HP_TEMP_RETURN, **({"default": det["temp_return"]} if det.get("temp_return") else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            selector.EntitySelectorConfig(domain="sensor")
         )
         schema_dict[vol.Optional(CONF_HP_TEMP_DHW, **({"default": det["temp_dhw"]} if det.get("temp_dhw") else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            selector.EntitySelectorConfig(domain="sensor")
         )
         schema_dict[vol.Optional(CONF_HP_TEMP_BUFFER, **({"default": det["temp_buffer"]} if det.get("temp_buffer") else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            selector.EntitySelectorConfig(domain="sensor")
         )
         schema_dict[vol.Optional(CONF_HP_TEMP_OUTDOOR, **({"default": det["temp_outdoor"]} if det.get("temp_outdoor") else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            selector.EntitySelectorConfig(domain="sensor")
         )
         schema_dict[vol.Optional(CONF_HP_FLOW_RATE, **({"default": det["flow_rate"]} if det.get("flow_rate") else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
@@ -1255,37 +1258,37 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
 
         cur_pwr = self._val(CONF_HP_POWER) or det.get("power")
         schema_dict[vol.Optional(CONF_HP_POWER, **({"default": cur_pwr} if cur_pwr else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_en = self._val(CONF_HP_ENERGY) or det.get("energy")
         schema_dict[vol.Optional(CONF_HP_ENERGY, **({"default": cur_en} if cur_en else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_flow = self._val(CONF_HP_TEMP_FLOW) or det.get("temp_flow")
         schema_dict[vol.Optional(CONF_HP_TEMP_FLOW, **({"default": cur_flow} if cur_flow else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_ret = self._val(CONF_HP_TEMP_RETURN) or det.get("temp_return")
         schema_dict[vol.Optional(CONF_HP_TEMP_RETURN, **({"default": cur_ret} if cur_ret else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_dhw = self._val(CONF_HP_TEMP_DHW) or det.get("temp_dhw")
         schema_dict[vol.Optional(CONF_HP_TEMP_DHW, **({"default": cur_dhw} if cur_dhw else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_buf = self._val(CONF_HP_TEMP_BUFFER) or det.get("temp_buffer")
         schema_dict[vol.Optional(CONF_HP_TEMP_BUFFER, **({"default": cur_buf} if cur_buf else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_out = self._val(CONF_HP_TEMP_OUTDOOR) or det.get("temp_outdoor")
         schema_dict[vol.Optional(CONF_HP_TEMP_OUTDOOR, **({"default": cur_out} if cur_out else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            selector.EntitySelectorConfig(domain="sensor")
         )
 
         cur_fr = self._val(CONF_HP_FLOW_RATE) or det.get("flow_rate")
