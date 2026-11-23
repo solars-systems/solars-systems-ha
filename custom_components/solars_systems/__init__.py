@@ -39,7 +39,11 @@ from .const import (
     CONF_HP_FAULT,
     CONF_SENSOR_PV_POWER,
     CONF_SENSOR_LOAD_POWER,
+    CONF_SENSOR_LOAD_ENERGY_TODAY,
+    CONF_SENSOR_LOAD_ENERGY_MONTH,
     CONF_SENSOR_GRID_POWER,
+    CONF_SENSOR_GRID_ENERGY_TODAY,
+    CONF_SENSOR_GRID_ENERGY_MONTH,
     CONF_SENSOR_BATT_SOC,
     CONF_SENSOR_BATT_VOLT,
     CONF_SENSOR_BATT_CURR,
@@ -100,16 +104,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             val = _safe_float(state.state)
             if val is not None:
                 unit = state.attributes.get("unit_of_measurement", "")
-                if unit == "kW":
+                if unit.lower() == "kw":
                     val = round(val * 1000.0, 1)
-                elif unit == "Wh":
-                    if key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_ENERGY_MONTH, CONF_SENSOR_ENERGY_YEAR):
+                elif unit.lower() == "wh":
+                    if key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_ENERGY_MONTH, CONF_SENSOR_ENERGY_YEAR, CONF_SENSOR_LOAD_ENERGY_TODAY, CONF_SENSOR_LOAD_ENERGY_MONTH, CONF_SENSOR_GRID_ENERGY_TODAY, CONF_SENSOR_GRID_ENERGY_MONTH):
                         val = round(val / 1000.0, 3)
-                elif unit == "MWh":
-                    if key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_ENERGY_MONTH, CONF_SENSOR_ENERGY_YEAR):
+                elif unit.lower() == "mwh":
+                    if key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_ENERGY_MONTH, CONF_SENSOR_ENERGY_YEAR, CONF_SENSOR_LOAD_ENERGY_TODAY, CONF_SENSOR_LOAD_ENERGY_MONTH, CONF_SENSOR_GRID_ENERGY_TODAY, CONF_SENSOR_GRID_ENERGY_MONTH):
                         val = round(val * 1000.0, 3)
             # Failsafe: if daily energy value > 1000, it is sent in raw Wh (e.g. 209639 Wh)
-            if val is not None and key == CONF_SENSOR_ENERGY_TODAY and val > 1000:
+            if val is not None and key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_LOAD_ENERGY_TODAY, CONF_SENSOR_GRID_ENERGY_TODAY) and val > 1000:
                 val = round(val / 1000.0, 2)
             return val
 
@@ -176,6 +180,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             payload["tensiuneAcIn"] = grid_volt
         if ac_out_volt is not None:
             payload["tensiuneAcOut"] = ac_out_volt
+
+        load_energy_today = get_val(CONF_SENSOR_LOAD_ENERGY_TODAY)
+        load_energy_month = get_val(CONF_SENSOR_LOAD_ENERGY_MONTH)
+        grid_energy_today = get_val(CONF_SENSOR_GRID_ENERGY_TODAY)
+        grid_energy_month = get_val(CONF_SENSOR_GRID_ENERGY_MONTH)
+
+        if load_energy_today is not None:
+            payload["energieConsumZi"] = load_energy_today
+        if load_energy_month is not None:
+            payload["energieConsumLuna"] = load_energy_month
+        if grid_energy_today is not None:
+            payload["energieReteaZi"] = grid_energy_today
+        if grid_energy_month is not None:
+            payload["energieReteaLuna"] = grid_energy_month
 
         # Battery
         batt_soc = get_val(CONF_SENSOR_BATT_SOC)

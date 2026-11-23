@@ -1,7 +1,7 @@
 """Constants for the Solars Systems integration."""
 
 DOMAIN = "solars_systems"
-INTEGRATION_VERSION = "1.0.26"
+INTEGRATION_VERSION = "1.0.27"
 
 DEFAULT_API_URL = "https://api.solars-systems.eu/ha"
 DEFAULT_UPDATE_INTERVAL = 30  # seconds
@@ -47,6 +47,10 @@ CONF_SENSOR_BATT_CURR = "sensor_batt_curr"
 CONF_SENSOR_BATT_POWER = "sensor_batt_power"
 CONF_SENSOR_GRID_VOLT = "sensor_grid_volt"
 CONF_SENSOR_AC_OUT_VOLT = "sensor_ac_out_volt"
+CONF_SENSOR_LOAD_ENERGY_TODAY = "sensor_load_energy_today"
+CONF_SENSOR_LOAD_ENERGY_MONTH = "sensor_load_energy_month"
+CONF_SENSOR_GRID_ENERGY_TODAY = "sensor_grid_energy_today"
+CONF_SENSOR_GRID_ENERGY_MONTH = "sensor_grid_energy_month"
 CONF_SENSOR_ENERGY_TODAY = "sensor_energy_today"
 CONF_SENSOR_ENERGY_MONTH = "sensor_energy_month"
 CONF_SENSOR_ENERGY_YEAR = "sensor_energy_year"

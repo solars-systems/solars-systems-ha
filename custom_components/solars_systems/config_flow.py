@@ -45,7 +45,11 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     CONF_SENSOR_PV_POWER,
     CONF_SENSOR_LOAD_POWER,
+    CONF_SENSOR_LOAD_ENERGY_TODAY,
+    CONF_SENSOR_LOAD_ENERGY_MONTH,
     CONF_SENSOR_GRID_POWER,
+    CONF_SENSOR_GRID_ENERGY_TODAY,
+    CONF_SENSOR_GRID_ENERGY_MONTH,
     CONF_SENSOR_BATT_SOC,
     CONF_SENSOR_BATT_VOLT,
     CONF_SENSOR_BATT_CURR,
@@ -1170,7 +1174,22 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             selector.EntitySelectorConfig(domain="sensor")
         )
 
-        # 1.1 Grid / AC In Power (for Hybrid inverters, Smart Meters, Feed-In / Import)
+        # 1.1 House Consumption Energy Today (kWh, Optional)
+        load_energy_cand = _auto_detect_candidate(
+            self.hass, "sensor", "energy", ("kWh", "Wh", "MWh"),
+            (
+                "sensor.load_energy_today", "sensor.daily_load_energy", "sensor.home_consumption_today",
+                "sensor.house_consumption_today", "sensor.energy_consumed_today", "sensor.total_load_energy_today",
+                "sensor.daily_energy_consumption", "sensor.axpert_max_load_energy_today", "sensor.solar_assistant_daily_load_energy",
+                "load_energy_today", "energy_consumed_today", "daily_load_energy", "house_consumption_today", "consum_zi", "energie_consum_zi"
+            ),
+            ("solar", "pv", "grid", "retea", "battery", "baterie", "export")
+        )
+        schema_dict[vol.Optional(CONF_SENSOR_LOAD_ENERGY_TODAY, **({"default": _sc(self.hass, load_energy_cand)} if _sc(self.hass, load_energy_cand) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        # 1.2 Grid / AC In Power (for Hybrid inverters, Smart Meters, Feed-In / Import)
         grid_pwr_cand = _auto_detect_candidate(
             self.hass, "sensor", "power", ("W", "kW"),
             (
@@ -1182,6 +1201,21 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ("battery", "baterie", "pv", "load", "consum", "cell")
         )
         schema_dict[vol.Optional(CONF_SENSOR_GRID_POWER, **({"default": _sc(self.hass, grid_pwr_cand)} if _sc(self.hass, grid_pwr_cand) else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        # 1.3 Grid Energy Imported Today (kWh, Optional)
+        grid_energy_cand = _auto_detect_candidate(
+            self.hass, "sensor", "energy", ("kWh", "Wh", "MWh"),
+            (
+                "sensor.grid_energy_today", "sensor.daily_grid_energy", "sensor.daily_grid_import",
+                "sensor.energy_imported_today", "sensor.grid_import_today", "sensor.grid_energy_in_today",
+                "sensor.solar_assistant_daily_grid_energy", "grid_energy_today", "energy_imported_today",
+                "retea_zi", "energie_retea_zi"
+            ),
+            ("export", "solar", "pv", "battery", "baterie", "load", "consum")
+        )
+        schema_dict[vol.Optional(CONF_SENSOR_GRID_ENERGY_TODAY, **({"default": _sc(self.hass, grid_energy_cand)} if _sc(self.hass, grid_energy_cand) else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         )
 
@@ -1668,8 +1702,18 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
             selector.EntitySelectorConfig(domain="sensor")
         )
 
+        cur_load_energy = self._val(CONF_SENSOR_LOAD_ENERGY_TODAY)
+        schema_dict[vol.Optional(CONF_SENSOR_LOAD_ENERGY_TODAY, **({"default": cur_load_energy} if cur_load_energy else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
         cur_grid_pwr = self._val(CONF_SENSOR_GRID_POWER)
         schema_dict[vol.Optional(CONF_SENSOR_GRID_POWER, **({"default": cur_grid_pwr} if cur_grid_pwr else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_grid_energy = self._val(CONF_SENSOR_GRID_ENERGY_TODAY)
+        schema_dict[vol.Optional(CONF_SENSOR_GRID_ENERGY_TODAY, **({"default": cur_grid_energy} if cur_grid_energy else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         )
 

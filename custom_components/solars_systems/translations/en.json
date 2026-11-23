@@ -122,7 +122,9 @@
           "sensor_ac_out_volt": "Inverter AC Out Voltage (V)",
           "import_history": "Import past energy history",
           "history_range": "History range",
-          "update_interval": "Live data update interval (seconds)"
+          "update_interval": "Live data update interval (seconds)",
+          "sensor_load_energy_today": "House Consumption Energy Today (kWh, Optional)",
+          "sensor_grid_energy_today": "Grid Energy Imported Today (kWh, Optional)"
         }
       },
       "mppt_layout": {
@@ -505,7 +507,9 @@
           "sensor_grid_power": "Grid / AC In Power (W/kW) [Hybrid / Grid Feed-In / Import]",
           "sensor_grid_volt": "Grid AC In Voltage (V)",
           "sensor_ac_out_volt": "Inverter AC Out Voltage (V)",
-          "update_interval": "Live data update interval (seconds)"
+          "update_interval": "Live data update interval (seconds)",
+          "sensor_load_energy_today": "House Consumption Energy Today (kWh, Optional)",
+          "sensor_grid_energy_today": "Grid Energy Imported Today (kWh, Optional)"
         }
       },
       "mppt_layout": {
