@@ -441,7 +441,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
                 kwh = s.get("change")
                 if kwh is None or kwh <= 0:
-                    kwh = s.get("state")
+                    s_max = _safe_float(s.get("max"))
+                    s_min = _safe_float(s.get("min"))
+                    if s_max is not None and s_min is not None and (s_max - s_min) > 0:
+                        kwh = s_max - s_min
+                    else:
+                        kwh = s.get("state")
 
                 val = _safe_float(kwh)
                 if val is not None and val > 0:

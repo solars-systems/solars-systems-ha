@@ -65,6 +65,13 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+def _sc(hass_or_val: Any, val: Any = None) -> str | None:
+    """Sanitize entity ID candidate: must be non-empty string starting with sensor."""
+    target = val if val is not None else hass_or_val
+    if target and isinstance(target, str) and target.startswith("sensor."):
+        return target
+    return None
+
 COMMON_NON_SOLAR_KEYWORDS = (
     # Dispozitive mobile & Tablete perete
     "tablet", "tableta", "ipad", "telefon", "phone", "mobile", "laptop",
@@ -756,7 +763,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             if self.hass.states.get(der_c) is not None:
                                 c_cand = der_c
                                 break
-                c_opts = {"default": c_cand} if c_cand else {}
+                c_opts = {"default": _sc(self.hass, c_cand)} if _sc(self.hass, c_cand) else {}
                 schema_dict[vol.Optional(c_key, **c_opts)] = selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor")
                 )
