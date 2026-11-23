@@ -255,7 +255,7 @@ def _populate_bms_pack_from_base(hass, base_eid_or_prefix: str, p: int) -> dict[
             if suf in ent_name:
                 ent_name = ent_name.split(suf)[0].rstrip("_")
                 break
-        pat = re.compile(rf"^sensor\.{re.escape(ent_name.lower())}(?:_|$)(?!\d)", re.IGNORECASE)
+        pat = re.compile(rf"^sensor\.{re.escape(ent_name.lower())}(?:_|$)", re.IGNORECASE)
         candidates = [e for e in all_eids if pat.match(e.lower())]
 
     res: dict[str, str] = {}
@@ -418,13 +418,13 @@ def _auto_detect_bms_pack(hass, p: int) -> dict[str, Any]:
 
     # Boundary regex matching for pack p (prevents pack 1 matching pack 10..16)
     pack_re = re.compile(rf"(?:banc|bms|battery|baterie|pack|jk_bms|jkbms|jk|daly|seplos|pylon|esp\d+_bms|esp_\d+_bms)[_\-\s]*0?{p}(?!\d)", re.IGNORECASE)
+    geo_re = re.compile(rf"(?:{cur_geo[0]}|{cur_geo[1]})[_\-\s]*(?:bms[_\-\s]*)?0?{sub_idx}(?!\d)", re.IGNORECASE) if cur_geo else None
     generic_re = re.compile(r"(?:bms|jk_bms|jkbms|daly|seplos|pylon|banc)", re.IGNORECASE) if (p == 1 and not has_multiple_bms) else None
 
     def match_pack(low_str: str) -> bool:
         if pack_re.search(low_str):
             return True
-        if any(pat in low_str for pat in p_patterns):
-            # Ensure number boundary if pat ends with digit
+        if geo_re and geo_re.search(low_str):
             return True
         if generic_re and generic_re.search(low_str):
             return True

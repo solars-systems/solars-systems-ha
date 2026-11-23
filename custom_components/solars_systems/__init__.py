@@ -204,23 +204,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if energy_year is not None:
             payload["energieAn"] = energy_year
 
-        # Send to API
-        try:
-            async with session.post(
-                f"{DEFAULT_API_URL}/telemetry",
-                json=payload,
-                headers=headers,
-                timeout=10,
-            ) as resp:
-                if resp.status != 200:
-                    _LOGGER.warning("Solars Systems API returned status %s on telemetry", resp.status)
-        except Exception as err:
-            _LOGGER.debug("Error sending telemetry to Solars Systems: %s", err)
-
-        # Send BMS telemetry if configured
+        # Prepare BMS telemetry if configured
+        bms_packs = []
         if data.get(CONF_HAS_HA_BMS):
             bms_count = int(data.get(CONF_BMS_COUNT, 1))
-            bms_packs = []
             for p in range(1, bms_count + 1):
                 pack_data: dict[str, Any] = {"bms_index": p}
                 v = get_val(f"bms_{p}_voltage")
@@ -288,26 +275,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 if "voltage" in pack_data or "soc" in pack_data or "current" in pack_data or cells:
                     bms_packs.append(pack_data)
 
-            if bms_packs:
-                try:
-                    async with session.post(
-                        f"{DEFAULT_API_URL}/bms-telemetry",
-                        json={"macid": inverter_id, "integration_version": INTEGRATION_VERSION, "packs": bms_packs},
-                        headers=headers,
-                        timeout=10,
-                    ) as bms_resp:
-                        if bms_resp.status != 200:
-                            _LOGGER.warning("Solars Systems API returned status %s on BMS telemetry", bms_resp.status)
-                except Exception as bms_err:
-                    _LOGGER.debug("Error sending BMS telemetry to Solars Systems: %s", bms_err)
-
-        # Send Heat Pump telemetry if configured
+        # Prepare Heat Pump telemetry if configured
+        hp_payload: dict[str, Any] = {}
         if data.get(CONF_HAS_HEAT_PUMP):
-            hp_payload: dict[str, Any] = {}
             hp_pwr = get_val(CONF_HP_POWER)
             if hp_pwr is not None:
                 hp_payload["putere_el_w"] = hp_pwr
                 hp_payload["putere_el_kw"] = round(hp_pwr / 1000.0, 2)
+                # Ensure puterePompa is present in main /telemetry payload
                 payload["puterePompa"] = hp_pwr
 
             hp_en = get_val(CONF_HP_ENERGY)
@@ -380,17 +355,54 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
             if hp_payload:
                 hp_payload["valid"] = True
-                try:
-                    async with session.post(
-                        f"{DEFAULT_API_URL}/heatpump-telemetry",
-                        json={"macid": inverter_id, "integration_version": INTEGRATION_VERSION, "heat_pump": hp_payload},
-                        headers=headers,
-                        timeout=10,
-                    ) as hp_resp:
-                        if hp_resp.status != 200:
-                            _LOGGER.warning("Solars Systems API returned status %s on heat pump telemetry", hp_resp.status)
-                except Exception as hp_err:
-                    _LOGGER.debug("Error sending heat pump telemetry to Solars Systems: %s", hp_err)
+
+        # Send HTTP requests in parallel via asyncio.gather for ultra-fast, non-blocking execution
+        async def _post_main_telemetry() -> None:
+            try:
+                async with session.post(
+                    f"{DEFAULT_API_URL}/telemetry",
+                    json=payload,
+                    headers=headers,
+                    timeout=10,
+                ) as resp:
+                    if resp.status != 200:
+                        _LOGGER.warning("Solars Systems API returned status %s on telemetry", resp.status)
+            except Exception as err:
+                _LOGGER.debug("Error sending telemetry to Solars Systems: %s", err)
+
+        async def _post_bms_telemetry() -> None:
+            try:
+                async with session.post(
+                    f"{DEFAULT_API_URL}/bms-telemetry",
+                    json={"macid": inverter_id, "integration_version": INTEGRATION_VERSION, "packs": bms_packs},
+                    headers=headers,
+                    timeout=10,
+                ) as bms_resp:
+                    if bms_resp.status != 200:
+                        _LOGGER.warning("Solars Systems API returned status %s on BMS telemetry", bms_resp.status)
+            except Exception as bms_err:
+                _LOGGER.debug("Error sending BMS telemetry to Solars Systems: %s", bms_err)
+
+        async def _post_hp_telemetry() -> None:
+            try:
+                async with session.post(
+                    f"{DEFAULT_API_URL}/heatpump-telemetry",
+                    json={"macid": inverter_id, "integration_version": INTEGRATION_VERSION, "heat_pump": hp_payload},
+                    headers=headers,
+                    timeout=10,
+                ) as hp_resp:
+                    if hp_resp.status != 200:
+                        _LOGGER.warning("Solars Systems API returned status %s on heat pump telemetry", hp_resp.status)
+            except Exception as hp_err:
+                _LOGGER.debug("Error sending heat pump telemetry to Solars Systems: %s", hp_err)
+
+        req_tasks = [_post_main_telemetry()]
+        if bms_packs:
+            req_tasks.append(_post_bms_telemetry())
+        if hp_payload:
+            req_tasks.append(_post_hp_telemetry())
+
+        await asyncio.gather(*req_tasks, return_exceptions=True)
 
     # 2. Historical Import Task
     async def async_run_history_import() -> None:
