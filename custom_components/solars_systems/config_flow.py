@@ -651,11 +651,13 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema({
             vol.Required(CONF_INVERTER_ID, default=list(device_options.keys())[0]): vol.In(device_options),
-            vol.Required(CONF_PRESET, default=PRESET_SOLAR_ASSISTANT): vol.In({
-                PRESET_SOLAR_ASSISTANT: "SolarAssistant (Detectare automată / Auto-detect)",
-                PRESET_AXPERT: "Axpert / Voltronic / Easun (Auto-detectare / Auto-detect)",
-                PRESET_CUSTOM: "Personalizat / Alte sisteme / Custom (Deye, Growatt, Huawei, Victron)",
-            }),
+            vol.Required(CONF_PRESET, default=PRESET_SOLAR_ASSISTANT): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[PRESET_SOLAR_ASSISTANT, PRESET_AXPERT, PRESET_CUSTOM],
+                    translation_key="system_preset",
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
             vol.Optional(CONF_HAS_HA_BMS, default=False): bool,
             vol.Optional(CONF_HAS_HEAT_PUMP, default=False): bool,
             vol.Required(CONF_INVERTER_COUNT, default=1): vol.In({
@@ -707,7 +709,6 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Step 3: Solar PV Panels & Energy Production."""
         errors: dict[str, str] = {}
         inv_count = int(self._layout.get(CONF_INVERTER_COUNT, 1))
-        mppt_count = int(self._layout.get(CONF_MPPT_PER_INVERTER, 2))
 
         if user_input is not None:
             self._collected_data.update(user_input)
@@ -1153,14 +1154,16 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             
             # Combine all collected data into final entry
             inv_count = int(self._layout.get(CONF_INVERTER_COUNT, 1))
-            mppt_count = int(self._layout.get(CONF_MPPT_PER_INVERTER, 2))
+            max_mppt = max(
+                [int(self._layout.get(f"mppt_inv_{inv}", 1)) for inv in range(1, inv_count + 1)] or [1]
+            )
             inverter_id = self._layout.get(CONF_INVERTER_ID, "")
 
             final_data = {
                 CONF_API_KEY: self._api_key,
                 CONF_INVERTER_ID: inverter_id,
                 CONF_INVERTER_COUNT: inv_count,
-                CONF_MPPT_PER_INVERTER: mppt_count,
+                CONF_MPPT_PER_INVERTER: max_mppt,
                 CONF_HAS_BATTERY: self._layout.get(CONF_HAS_BATTERY, True),
                 CONF_HAS_HA_BMS: self._layout.get(CONF_HAS_HA_BMS, False),
                 CONF_HAS_HEAT_PUMP: self._layout.get(CONF_HAS_HEAT_PUMP, False),
