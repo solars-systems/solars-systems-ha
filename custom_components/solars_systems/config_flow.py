@@ -348,7 +348,7 @@ def _populate_heat_pump_from_base(hass, base_eid: str) -> dict[str, str]:
     res[CONF_HP_ENERGY] = match(sensor_cands, ["energy", "energie", "total_energy", "kwh"], exclude=["index", "health"])
     res[CONF_HP_FAULT] = match(all_hp_cands, ["fault", "error", "eroare", "alarm"])
     res[CONF_HP_DEFROST] = match(all_hp_cands, ["defrost_active", "defrosting", "defrost", "degivrare"], exclude=["health", "time", "interval", "cycle"])
-    res[CONF_HP_STATUS] = match(all_hp_cands, ["mode", "status", "stare", "run_state"], exclude=["fan", "ventilator", "health"])
+    res[CONF_HP_STATUS] = match(all_hp_cands, ["eco", "mode", "status", "stare", "run_state", "zone1_power", "zone_1_power"], exclude=["fan", "ventilator", "health"])
 
     return {k: v for k, v in res.items() if v}
 
@@ -1107,7 +1107,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             selector.EntitySelectorConfig(domain="sensor")
         )
         schema_dict[vol.Optional(CONF_HP_STATUS, **({"default": det["status"]} if det.get("status") else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain=["climate", "sensor"])
+            selector.EntitySelectorConfig(domain=["climate", "sensor", "switch", "select", "binary_sensor", "input_select", "input_boolean"])
         )
         schema_dict[vol.Optional(CONF_HP_DEFROST, **({"default": det["defrost"]} if det.get("defrost") else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain=["binary_sensor", "switch", "sensor"])
@@ -1634,7 +1634,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
 
         cur_st = self._val(CONF_HP_STATUS) or det.get("status")
         schema_dict[vol.Optional(CONF_HP_STATUS, **({"default": cur_st} if cur_st else {}))] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain=["climate", "sensor"])
+            selector.EntitySelectorConfig(domain=["climate", "sensor", "switch", "select", "binary_sensor", "input_select", "input_boolean"])
         )
 
         cur_def = self._val(CONF_HP_DEFROST) or det.get("defrost")
