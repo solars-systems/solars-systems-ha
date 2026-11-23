@@ -508,7 +508,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 f"* **{total_skipped}** zile păstrate neschimbate\n\n"
                 f"Invertor: `{inverter_id}`"
             )
-            hass.components.persistent_notification.async_create(
+            from homeassistant.components.persistent_notification import async_create
+
+            async_create(
+                hass,
                 msg,
                 title="Solars Systems - Import Istoric",
                 notification_id=f"solars_import_{inverter_id}",

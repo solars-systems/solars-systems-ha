@@ -13,7 +13,7 @@ This guide provides all the necessary steps to install, configure, and customize
    * Log in to [solars-systems.eu](https://solars-systems.eu)
    * Go to **API Keys** (or Profile -> API Keys)
    * Copy your generated key (a unique secure token).
-3. **Functional Sensors in Home Assistant:** Ensure your inverter, battery, or BMS sensors are already working in Home Assistant (e.g. from SolarAssistant, Huawei Solar, Solarman, Deye Modbus, Fronius, Victron, ESPHome, JK-BMS, Daly, MQTT, etc.).
+3. **Functional Sensors in Home Assistant:** Ensure your inverter, battery, BMS, or heat pump sensors are already working in Home Assistant (e.g. from SolarAssistant, Huawei Solar, Solarman, Deye Modbus, Fronius, Victron, ESPHome, JK-BMS, Daly, Seplos, Sunclima, MQTT, etc.). Custom helpers like Riemann sum (integral) and Utility Meters are fully supported.
 
 ---
 
@@ -69,21 +69,27 @@ After restarting Home Assistant:
    * Enter the **API Key** obtained from [solars-systems.eu](https://solars-systems.eu).
 4. **Step 2 - System Layout & Preset:**
    * Select your inverter from your account.
-   * Choose your preset: **SolarAssistant (Auto-Detect)**, **Axpert / Voltronic / Easun**, or **Custom**.
-   * Configure the number of inverters and whether you have integrated BMS packs in Home Assistant (JK, Daly, Seplos, Pylontech, etc.).
-   * Check whether your system includes a battery storage pack.
-5. **Step 3 - Solar PV Panels & Yield:**
-   * Review and confirm your solar power and MPPT voltage sensors (auto-detected and pre-filled).
-6. **Step 4 - Battery Storage (Optional):**
-   * Confirm your battery State of Charge (SoC %), pack voltage, and current. *(Hundreds of individual BMS cell sensors are automatically filtered out to keep your list clean).*
-7. **Step 4b - BMS Battery Packs & Cells (Optional):**
-   * If BMS packs are enabled, select the number of packs (1 to 10).
-   * **Automatic Auto-Population:** Home Assistant automatically detects and pre-fills:
-     * **Individual Cells 1 - 16** (`cell_voltage_1` .. `cell_voltage_16`)
-     * **Min & Max cell voltages** (`min_cell_voltage`, `max_cell_voltage`) and **Cell Delta**
-     * **Temperatures** (Probe 1, Probe 2, MOSFET / Tube)
-     * **Switches & Binary Statuses** (Charging, Discharging, Balancing, Heating)
-8. **Step 5 - Grid, House Load & Settings:**
-   * Confirm house load consumption and grid AC voltage.
-   * Choose whether to **Import Historical Data** and configure live streaming interval (default: 30 seconds).
-9. Click **Submit**. Your live solar telemetry and production history will begin streaming immediately to Solars Systems!
+   * Choose your preset: **SolarAssistant (Auto-Detect)**, **Axpert / Voltronic / Easun (Auto-Detect)**, or **Custom**.
+   * Configure the number of inverters (1 to 6).
+   * Toggle optional subsystems: Battery Storage, BMS Battery Packs (JK, Daly, Seplos, Pylontech, etc.), and Heat Pump / HVAC.
+5. **Step 2b - MPPT Layout per Inverter:**
+   * Configure the exact number of MPPT strings (1 to 4 MPPTs) independently for each inverter.
+6. **Step 3 - Solar PV Panels & Yield:**
+   * Review and confirm your solar power and MPPT voltage/current/power sensors (auto-detected and pre-filled).
+   * Full support for custom Riemann sum helpers, Utility Meters, and template sensors.
+7. **Step 4 - Battery Storage (Optional):**
+   * Confirm your battery State of Charge (SoC %), pack voltage, current, and charge/discharge power. *(Hundreds of individual BMS cell sensors are automatically filtered out to keep your list clean).*
+8. **Step 4b - BMS Battery Packs & Cells (Optional):**
+   * If BMS packs are enabled, select the number of packs (1 to 16).
+   * **Intelligent Auto-Population:** Home Assistant automatically detects and pre-fills:
+     * **Individual Cells 1 - 16** (`cell_voltage_1` .. `cell_voltage_16`) using strict non-digit regex boundary checks.
+     * **Min & Max cell voltages** (`min_cell_voltage`, `max_cell_voltage`) and **Cell Delta**.
+     * **Temperatures** (Probe 1, Probe 2, MOSFET / Tube).
+     * **Switches & Binary Statuses** (Charging, Discharging, Balancing, Heating).
+   * Changing a pack's anchor sensor in the UI dynamically rediscovers that pack's entities in real-time.
+9. **Step 4c - Heat Pump & HVAC (Optional):**
+   * If Heat Pump is enabled, configure water flow (L/min), flow/return temperatures (Tur/Retur), electrical power (W/kW), COP, thermal heat power, buffer/DHW temperatures, and operating statuses.
+10. **Step 5 - Grid, House Load & Settings:**
+    * Confirm house load consumption and grid AC voltage/power (`putereAcIn`).
+    * Choose whether to **Import Historical Data** (uses robust statistical delta calculations without spikes) and configure live streaming interval (default: 30 seconds).
+11. Click **Submit**. Your live solar telemetry and production history will begin streaming immediately to Solars Systems!

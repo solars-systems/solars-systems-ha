@@ -13,7 +13,7 @@ Acest ghid oferă toți pașii necesari pentru instalarea, configurarea și pers
    * Conectați-vă pe [solars-systems.eu](https://solars-systems.eu)
    * Mergeți la secțiunea **Chei API** (sau Profil -> Chei API)
    * Copiați cheia generată (un token unic securizat).
-3. **Senzori Funcționali în Home Assistant:** Asigurați-vă că senzorii invertorului, ai bateriei sau ai BMS-ului sunt deja funcționali în Home Assistant (ex: din SolarAssistant, Huawei Solar, Solarman, Deye Modbus, Fronius, Victron, ESPHome, JK-BMS, Daly, MQTT etc.).
+3. **Senzori Funcționali în Home Assistant:** Asigurați-vă că senzorii invertorului, ai bateriei, BMS-ului sau pompei de căldură sunt deja funcționali în Home Assistant (ex: din SolarAssistant, Huawei Solar, Solarman, Deye Modbus, Fronius, Victron, ESPHome, JK-BMS, Daly, Seplos, Sunclima, MQTT etc.). Entitățile create prin Helpers (Riemann sum / Integrale, Utility Meters, Template Sensors) sunt pe deplin suportate.
 
 ---
 
@@ -69,21 +69,27 @@ După repornirea Home Assistant:
    * Introduceți **Cheia API** obținută de pe [solars-systems.eu](https://solars-systems.eu).
 4. **Pasul 2 - Arhitectură Sistem & Preset:**
    * Selectați invertorul din contul dvs.
-   * Alegeți presetul: **SolarAssistant (Detectare automată)**, **Axpert / Voltronic / Easun** sau **Personalizat / Custom**.
-   * Configurați numărul de invertoare și bifați dacă aveți pachete BMS integrate în Home Assistant (JK, Daly, Seplos, Pylontech etc.).
-   * Specificați dacă sistemul include baterie de stocare.
-5. **Pasul 3 - Panouri Solare & Producție (PV):**
-   * Confirmați senzorii de putere solară și tensiuni MPPT (detectați și pre-populați automat).
-6. **Pasul 4 - Baterie & Stocare (Opțional):**
-   * Confirmați senzorii principali ai bateriei (SOC %, tensiune pachet, curent). *(Sutele de senzori de celule individuale sunt filtrate automat pentru o listă curată).*
-7. **Pasul 4b - Pachete Baterii BMS & Celule (Opțional):**
-   * Dacă ați activat opțiunea BMS, alegeți numărul de pachete (de la 1 la 10).
-   * **Auto-Populare Automată:** Home Assistant detectează și pre-completează automat:
-     * **Toate celulele de la 1 la 16** (`cell_voltage_1` .. `cell_voltage_16`)
-     * **Tensiune minimă, maximă și diferență celule (Delta)**
-     * **Temperaturile** (Sonda 1, Sonda 2, MOSFET / Tube)
-     * **Comutatoare și stări ON/OFF** (Încărcare, Descărcare, Balansare, Încălzire)
-8. **Pasul 5 - Rețea, Consum Casă & Setări:**
-   * Confirmați consumul casei și tensiunea rețelei.
-   * Alegeți dacă doriți **Import Istoric** și setați intervalul de transmitere live (implicit: 30 secunde).
-9. Apăsați **Submit**. Telemetria dvs. solară live și istoricul de producție vor începe să se sincronizeze instant în Solars Systems!
+   * Alegeți presetul: **SolarAssistant (Detectare automată)**, **Axpert / Voltronic / Easun (Detectare automată)** sau **Personalizat / Custom**.
+   * Configurați numărul de invertoare (1 până la 6).
+   * Bifați subsistemele prezente: Baterie de stocare, Pachete BMS integrate (JK, Daly, Seplos, Pylontech etc.) și Pompă de căldură / HVAC.
+5. **Pasul 2b - Configurare MPPT per Invertor:**
+   * Alegeți numărul de șiruri MPPT (între 1 și 4 intrări) în mod independent pentru fiecare invertor.
+6. **Pasul 3 - Panouri Solare & Producție (PV):**
+   * Confirmați senzorii de putere solară și tensiuni/curenți MPPT (detectați și pre-populați automat fără coliziuni).
+   * Suport complet pentru ajutoare personalizate (Riemann sum, contoare Utility Meter, template sensors).
+7. **Pasul 4 - Baterie & Stocare (Opțional):**
+   * Confirmați senzorii principali ai bateriei (SOC %, tensiune pachet, curent, putere). *(Sutele de senzori de celule individuale sunt filtrate automat pentru o listă curată).*
+8. **Pasul 4b - Pachete Baterii BMS & Celule (Opțional):**
+   * Dacă ați activat opțiunea BMS, alegeți numărul de pachete (de la 1 la 16).
+   * **Auto-Populare Inteligentă:** Home Assistant detectează și pre-completează automat:
+     * **Toate celulele de la 1 la 16** (`cell_voltage_1` .. `cell_voltage_16`) folosind regex strict cu lookahead non-numeric.
+     * **Tensiune minimă, maximă și diferență celule (Delta)**.
+     * **Temperaturile** (Sonda 1, Sonda 2, MOSFET / Tube).
+     * **Comutatoare și stări ON/OFF** (Încărcare, Descărcare, Balansare, Încălzire).
+   * La schimbarea oricărui senzor ancoră din formular, toate celulele pachetului respectiv se redescoperă automat în timp real.
+9. **Pasul 4c - Pompă de Căldură & HVAC (Opțional):**
+   * Dacă pompa este activată, configurați debitul de apă (L/min), temperaturile Tur/Retur, puterea electrică (W/kW), COP, puterea termică instantă, temperaturile ACM/Puffer și stările de funcționare.
+10. **Pasul 5 - Rețea, Consum Casă & Setări:**
+    * Confirmați consumul casei și tensiunea/puterea rețelei (`putereAcIn`).
+    * Alegeți dacă doriți **Import Istoric** (folosește delte statistice calculate precis fără spike-uri) și setați intervalul de transmitere live (implicit: 30 secunde).
+11. Apăsați **Submit**. Telemetria dvs. solară live și istoricul de producție vor începe să se sincronizeze instant în Solars Systems!

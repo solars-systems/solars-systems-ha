@@ -387,27 +387,6 @@ def _auto_detect_bms_pack(hass, p: int) -> dict[str, Any]:
     ]
     cur_geo = geo_macs[esp_idx - 1] if esp_idx <= len(geo_macs) else None
 
-    p_patterns = [
-        f"banc_{p}_", f"banc{p}_", f"banc_{p:02d}_", f"banc{p:02d}_",
-        f"banc_{p}", f"banc{p}",
-        f"bms{p}_", f"bms_{p}_", f"bms{p:02d}_", f"bms_{p:02d}_",
-        f"battery_{p}_", f"battery{p}_", f"battery_{p:02d}_", f"battery{p:02d}_",
-        f"baterie_{p}_", f"baterie{p}_", f"baterie_{p:02d}_", f"baterie{p:02d}_",
-        f"pack_{p}_", f"pack{p}_", f"pack_{p:02d}_", f"pack{p:02d}_",
-        f"jk_bms_{p}_", f"jk_bms_{p:02d}_", f"jkbms_{p}_", f"jkbms_{p:02d}_",
-        f"jk_{p}_", f"jk_{p:02d}_", f"daly_{p}_", f"daly_{p:02d}_",
-        f"seplos_{p}_", f"seplos_{p:02d}_", f"pylon_{p}_", f"pylon_{p:02d}_",
-        f"bms_{p}", f"bms{p}", f"pack_{p}", f"pack{p}", f"battery_{p}", f"battery{p}", f"baterie_{p}", f"baterie{p}",
-        # Dual ESP patterns (esp1_bms1, esp2_bms2, etc.)
-        f"esp{esp_idx}_bms{sub_idx}", f"esp_{esp_idx}_bms_{sub_idx}", f"esp{esp_idx}_bms_{sub_idx}",
-        f"esp{esp_idx}_pack{sub_idx}", f"esp_{esp_idx}_pack_{sub_idx}",
-    ]
-    if cur_geo:
-        p_patterns.extend([
-            f"{cur_geo[0]}_{sub_idx}", f"{cur_geo[1]}_{sub_idx}",
-            f"{cur_geo[0]}_bms{sub_idx}", f"{cur_geo[1]}_bms{sub_idx}",
-            f"{cur_geo[0]}_bms_{sub_idx}", f"{cur_geo[1]}_bms_{sub_idx}"
-        ])
 
     # Check whether multiple numbered BMS packs exist in the system (2..16)
     has_multiple_bms = False
