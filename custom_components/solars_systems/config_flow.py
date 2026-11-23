@@ -118,11 +118,14 @@ def _auto_detect_candidate(
     negative_keywords: tuple[str, ...] = (),
     require_solar_context: bool = False,
     exclude_cells: bool = False,
+    already_used: set[str] | None = None,
 ) -> str | None:
     """Find a candidate sensor matching criteria with strict non-solar exclusions."""
     # 1. Exact entity_id check first
     for kw in keywords:
         if kw.startswith("sensor."):
+            if already_used and kw in already_used:
+                continue
             state = hass.states.get(kw)
             if state is not None:
                 return kw
@@ -134,6 +137,8 @@ def _auto_detect_candidate(
         for state in all_states:
             entity_id = state.entity_id
             if not entity_id.startswith(f"{domain}."):
+                continue
+            if already_used and entity_id in already_used:
                 continue
 
             d_class = state.attributes.get("device_class")
@@ -215,7 +220,10 @@ def _discover_all_bms_clusters(hass) -> list[str]:
                     clusters.append(base)
                 break
 
-    clusters.sort()
+    def natural_sort_key(s: str):
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+
+    clusters.sort(key=natural_sort_key)
     return clusters
 
 
@@ -225,13 +233,31 @@ def _populate_bms_pack_from_base(hass, base_eid_or_prefix: str, p: int) -> dict[
     # Crucial: BMS inputs strictly belong to the 'sensor' domain
     all_eids = [s.entity_id for s in states if s.entity_id.startswith("sensor.")]
 
-    ent_name = base_eid_or_prefix.split(".", 1)[1] if "." in base_eid_or_prefix else base_eid_or_prefix
-    for suf in ("_state_of_charge", "_soc", "_total_voltage", "_battery_voltage", "_pack_voltage", "_voltage", "_voltaj", "_current", "_curent"):
-        if suf in ent_name:
-            ent_name = ent_name.split(suf)[0].rstrip("_")
-            break
+    candidates: list[str] = []
 
-    candidates = [e for e in all_eids if ent_name.lower() in e.lower()]
+    # 1. Device ID matching from entity registry (highest priority & precision)
+    try:
+        from homeassistant.helpers import entity_registry as er
+        ent_reg = er.async_get(hass)
+        entry = ent_reg.async_get(base_eid_or_prefix) if "." in base_eid_or_prefix else None
+        if entry and entry.device_id:
+            candidates = [
+                e.entity_id for e in ent_reg.entities.values()
+                if e.device_id == entry.device_id and not e.disabled and e.entity_id.startswith("sensor.")
+            ]
+    except Exception as ex:
+        _LOGGER.debug("Could not resolve device_id for %s: %s", base_eid_or_prefix, ex)
+
+    # 2. Fallback on clean prefix with strict boundary check (prevents bms_1 matching bms_10)
+    if not candidates:
+        ent_name = base_eid_or_prefix.split(".", 1)[1] if "." in base_eid_or_prefix else base_eid_or_prefix
+        for suf in ("_state_of_charge", "_soc", "_total_voltage", "_battery_voltage", "_pack_voltage", "_voltage", "_voltaj", "_current", "_curent"):
+            if suf in ent_name:
+                ent_name = ent_name.split(suf)[0].rstrip("_")
+                break
+        pat = re.compile(rf"^sensor\.{re.escape(ent_name.lower())}(?:_|$)(?!\d)", re.IGNORECASE)
+        candidates = [e for e in all_eids if pat.match(e.lower())]
+
     res: dict[str, str] = {}
 
     def match(keywords, exclude=()):
@@ -264,8 +290,10 @@ def _populate_bms_pack_from_base(hass, base_eid_or_prefix: str, p: int) -> dict[
     res[f"bms_{p}_t2"] = match(["temperature_sensor_2", "temp_2", "t2"], exclude=["mos", "power_tube"])
     res[f"bms_{p}_tmos"] = match(["power_tube_temperature", "mosfet_temperature", "tmos", "mosfet_temp"])
 
+    # Cell loop with (?!\d) lookahead boundary (cell_1 never matches cell_10..16)
     for c_idx in range(1, 17):
-        cv = match([f"cell_voltage_{c_idx}", f"celula_{c_idx}", f"cell_{c_idx}"])
+        cell_re = re.compile(rf"(?:cell_voltage|celula|cell)[_\s]*0?{c_idx}(?!\d)", re.IGNORECASE)
+        cv = next((c for c in candidates if cell_re.search(c)), None)
         if cv:
             res[f"bms_{p}_cell_{c_idx}"] = cv
 
@@ -381,15 +409,33 @@ def _auto_detect_bms_pack(hass, p: int) -> dict[str, Any]:
             f"{cur_geo[0]}_bms_{sub_idx}", f"{cur_geo[1]}_bms_{sub_idx}"
         ])
 
-    if p == 1:
-        p_patterns.extend(["bms1", "bms_1", "bms_", "jk_bms", "jkbms", "daly", "seplos", "pylon", "banc1", "banc_1"])
+    # Check whether multiple numbered BMS packs exist in the system (2..16)
+    has_multiple_bms = False
+    for eid in all_eids:
+        if any(re.search(rf"(?:bms|battery|baterie|pack|jk|jkbms|seplos|daly|banc)[_\-\s]*0?{other_p}(?!\d)", eid.lower()) for other_p in range(2, 17)):
+            has_multiple_bms = True
+            break
+
+    # Boundary regex matching for pack p (prevents pack 1 matching pack 10..16)
+    pack_re = re.compile(rf"(?:banc|bms|battery|baterie|pack|jk_bms|jkbms|jk|daly|seplos|pylon|esp\d+_bms|esp_\d+_bms)[_\-\s]*0?{p}(?!\d)", re.IGNORECASE)
+    generic_re = re.compile(r"(?:bms|jk_bms|jkbms|daly|seplos|pylon|banc)", re.IGNORECASE) if (p == 1 and not has_multiple_bms) else None
+
+    def match_pack(low_str: str) -> bool:
+        if pack_re.search(low_str):
+            return True
+        if any(pat in low_str for pat in p_patterns):
+            # Ensure number boundary if pat ends with digit
+            return True
+        if generic_re and generic_re.search(low_str):
+            return True
+        return False
 
     # 1. Search for SOC candidate
     for eid in all_eids:
         low = eid.lower()
         if not low.startswith("sensor."):
             continue
-        if any(pat in low for pat in p_patterns):
+        if match_pack(low):
             if any(k in low for k in ("_state_of_charge", "_soc", "soc", "procent_baterie", "capacity_remaining")) and not any(neg in low for neg in ("invert", "inv", "phone", "ups")):
                 soc_cand = eid
                 break
@@ -399,7 +445,7 @@ def _auto_detect_bms_pack(hass, p: int) -> dict[str, Any]:
         low = eid.lower()
         if not low.startswith("sensor."):
             continue
-        if any(pat in low for pat in p_patterns):
+        if match_pack(low):
             if any(k in low for k in ("_total_voltage", "_battery_voltage", "voltage", "voltaj", "tensiune")) and not any(x in low for x in ("cell", "celula", "min", "max", "delta", "avg", "ac", "grid", "pv", "mppt", "invert", "inv")):
                 volt_cand = eid
                 break
@@ -674,14 +720,18 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_grid()
 
         schema_dict: dict[Any, Any] = {}
+        used_in_step: set[str] = set()
 
         # 1. Total Solar Power (e.g. sensor.total_pv_power, sensor.pv_power, sensor.total_panouri)
         tot_pv_cand = _auto_detect_candidate(
             self.hass, "sensor", "power", ("W", "kW"),
             ("sensor.total_pv_power", "sensor.pv_power", "sensor.axpert_max_pv_power_1", "total_pv_power", "pv_power", "axpert_max_pv_power_1", "axpert_max_pv_power", "voltronic_pv_power", "total_panouri", "total_pv", "putere_pv", "solar_power", "total solar"),
             ("consum", "load", "battery", "baterie"),
-            require_solar_context=True
+            require_solar_context=True,
+            already_used=used_in_step
         )
+        if tot_pv_cand:
+            used_in_step.add(tot_pv_cand)
         schema_dict[vol.Optional(CONF_SENSOR_PV_POWER, **({"default": _sc(self.hass, tot_pv_cand)} if _sc(self.hass, tot_pv_cand) else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         )
@@ -715,8 +765,11 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 v_cand = _auto_detect_candidate(
                     self.hass, "sensor", "voltage", ("V",),
                     tuple(v_kw),
-                    ("batt", "baterie", "ac", "grid", "cell")
+                    ("batt", "baterie", "ac", "grid", "cell"),
+                    already_used=used_in_step
                 )
+                if v_cand:
+                    used_in_step.add(v_cand)
                 v_opts = {"default": _sc(self.hass, v_cand)} if _sc(self.hass, v_cand) else {}
                 schema_dict[vol.Optional(v_key, **v_opts)] = selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor")
@@ -753,16 +806,19 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 c_cand = _auto_detect_candidate(
                     self.hass, "sensor", "current", ("A", "mA"),
                     tuple(c_kw),
-                    ("batt", "baterie", "ac", "grid")
+                    ("batt", "baterie", "ac", "grid"),
+                    already_used=used_in_step
                 )
                 # If current not found by keywords, try deriving from detected voltage entity!
                 if not c_cand and v_cand:
                     for v_word, c_word in (("voltage", "current"), ("voltaj", "curent"), ("volt", "current"), ("_v_", "_c_"), ("_v", "_c")):
                         if v_word in v_cand:
                             der_c = v_cand.replace(v_word, c_word)
-                            if self.hass.states.get(der_c) is not None:
+                            if der_c not in used_in_step and self.hass.states.get(der_c) is not None:
                                 c_cand = der_c
                                 break
+                if c_cand:
+                    used_in_step.add(c_cand)
                 c_opts = {"default": _sc(self.hass, c_cand)} if _sc(self.hass, c_cand) else {}
                 schema_dict[vol.Optional(c_key, **c_opts)] = selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor")
@@ -789,8 +845,11 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     p_mppt_cand = _auto_detect_candidate(
                         self.hass, "sensor", "power", ("W", "kW"),
                         tuple(p_mppt_kw),
-                        ("consum", "load", "batt", "baterie")
+                        ("consum", "load", "batt", "baterie"),
+                        already_used=used_in_step
                     )
+                    if p_mppt_cand:
+                        used_in_step.add(p_mppt_cand)
                     p_mppt_opts = {"default": _sc(self.hass, p_mppt_cand)} if _sc(self.hass, p_mppt_cand) else {}
                     schema_dict[vol.Optional(p_mppt_key, **p_mppt_opts)] = selector.EntitySelector(
                         selector.EntitySelectorConfig(domain="sensor")
@@ -802,8 +861,11 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 p_cand = _auto_detect_candidate(
                     self.hass, "sensor", "power", ("W", "kW"),
                     (f"sensor.inverter_{inv}_pv_power", f"inverter_{inv}_pv_power", f"inv{inv}_power", f"inverter_{inv}_power", f"inverter {inv} power", f"putere_inv{inv}"),
-                    ("consum", "load", "batt", "baterie")
+                    ("consum", "load", "batt", "baterie"),
+                    already_used=used_in_step
                 )
+                if p_cand:
+                    used_in_step.add(p_cand)
                 p_opts = {"default": _sc(self.hass, p_cand)} if _sc(self.hass, p_cand) else {}
                 schema_dict[vol.Optional(p_key, **p_opts)] = selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor")
@@ -926,11 +988,14 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             for p_idx in range(1, bms_count + 1):
                 ref_eid = user_input.get(f"bms_{p_idx}_soc") or user_input.get(f"bms_{p_idx}_voltage")
+                init_ref = getattr(self, "_initial_bms_ref", {}).get(p_idx)
+                user_changed_anchor = bool(ref_eid and init_ref and ref_eid != init_ref)
                 if ref_eid:
                     pack_pop = _populate_bms_pack_from_base(self.hass, ref_eid, p_idx)
                     for k, v in pack_pop.items():
-                        if v and v.startswith("sensor.") and not user_input.get(k):
-                            user_input[k] = v
+                        if v and v.startswith("sensor."):
+                            if user_changed_anchor or not user_input.get(k):
+                                user_input[k] = v
             self._collected_data.update(user_input)
             new_count = int(user_input.get(CONF_BMS_COUNT, bms_count))
             if new_count != bms_count:
@@ -959,8 +1024,12 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         def _sc(val):
             return val if (val and isinstance(val, str) and val.startswith("sensor.")) else None
 
+        self._initial_bms_ref: dict[int, str] = {}
         for p in range(1, bms_count + 1):
             det = _auto_detect_bms_pack(self.hass, p)
+            init_val = det.get("soc") or det.get("voltage")
+            if init_val:
+                self._initial_bms_ref[p] = init_val
 
             # SOC & Electrical (strictly sensor domain)
             d_soc = _sc(det.get("soc"))
@@ -1010,15 +1079,18 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             ref_eid = user_input.get(CONF_HP_TEMP_FLOW) or user_input.get(CONF_HP_POWER)
+            init_ref = getattr(self, "_initial_hp_ref", None)
+            user_changed_hp = bool(ref_eid and init_ref and ref_eid != init_ref)
             if ref_eid:
                 hp_pop = _populate_heat_pump_from_base(self.hass, ref_eid)
                 for k, v in hp_pop.items():
-                    if not user_input.get(k):
+                    if v and (user_changed_hp or not user_input.get(k)):
                         user_input[k] = v
             self._collected_data.update(user_input)
             return await self.async_step_grid()
 
         det = _auto_detect_heat_pump(self.hass)
+        self._initial_hp_ref = det.get("temp_flow") or det.get("power")
         schema_dict: dict[Any, Any] = {}
 
         schema_dict[vol.Optional(CONF_HP_POWER, **({"default": det["power"]} if det.get("power") else {}))] = selector.EntitySelector(
@@ -1401,11 +1473,14 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             for p_idx in range(1, bms_count + 1):
                 ref_eid = user_input.get(f"bms_{p_idx}_soc") or user_input.get(f"bms_{p_idx}_voltage")
+                init_ref = getattr(self, "_initial_bms_ref", {}).get(p_idx)
+                user_changed_anchor = bool(ref_eid and init_ref and ref_eid != init_ref)
                 if ref_eid:
                     pack_pop = _populate_bms_pack_from_base(self.hass, ref_eid, p_idx)
                     for k, v in pack_pop.items():
-                        if v and v.startswith("sensor.") and not user_input.get(k):
-                            user_input[k] = v
+                        if v and v.startswith("sensor."):
+                            if user_changed_anchor or not user_input.get(k):
+                                user_input[k] = v
             self._collected_data.update(user_input)
             new_count = int(user_input.get(CONF_BMS_COUNT, bms_count))
             if new_count != bms_count:
@@ -1434,6 +1509,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
             })
         }
 
+        self._initial_bms_ref = {}
         for p in range(1, bms_count + 1):
             saved_soc = self._val(f"bms_{p}_soc")
             saved_v = self._val(f"bms_{p}_voltage")
@@ -1451,6 +1527,8 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                 det = _auto_detect_bms_pack(self.hass, p)
 
             cur_soc = _sc(saved_soc or det.get("soc"))
+            if cur_soc:
+                self._initial_bms_ref[p] = cur_soc
             schema_dict[vol.Optional(f"bms_{p}_soc", **({"default": cur_soc} if cur_soc else {}))] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
@@ -1496,10 +1574,12 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         """Step 4c: Options for Heat Pump & HVAC."""
         if user_input is not None:
             ref_eid = user_input.get(CONF_HP_TEMP_FLOW) or user_input.get(CONF_HP_POWER)
+            init_ref = getattr(self, "_initial_hp_ref", None)
+            user_changed_hp = bool(ref_eid and init_ref and ref_eid != init_ref)
             if ref_eid:
                 hp_pop = _populate_heat_pump_from_base(self.hass, ref_eid)
                 for k, v in hp_pop.items():
-                    if not user_input.get(k):
+                    if v and (user_changed_hp or not user_input.get(k)):
                         user_input[k] = v
             self._collected_data.update(user_input)
             return await self.async_step_grid()
@@ -1511,6 +1591,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         det = {}
         if not (saved_flow or saved_pwr or saved_ret):
             det = _auto_detect_heat_pump(self.hass)
+        self._initial_hp_ref = saved_flow or saved_pwr or det.get("temp_flow") or det.get("power")
 
         schema_dict: dict[Any, Any] = {}
 
