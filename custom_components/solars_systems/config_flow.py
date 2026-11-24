@@ -47,6 +47,12 @@ from .const import (
     CONF_SENSOR_LOAD_POWER,
     CONF_SENSOR_LOAD_ENERGY_TODAY,
     CONF_SENSOR_LOAD_ENERGY_MONTH,
+    CONF_UNIT_LOAD_POWER,
+    CONF_UNIT_GRID_POWER,
+    CONF_UNIT_PV_POWER,
+    POWER_UNIT_AUTO,
+    POWER_UNIT_W,
+    POWER_UNIT_KW,
     CONF_SENSOR_GRID_POWER,
     CONF_SENSOR_GRID_ENERGY_TODAY,
     CONF_SENSOR_GRID_ENERGY_MONTH,
@@ -1173,6 +1179,17 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema_dict[vol.Optional(CONF_SENSOR_LOAD_POWER, **({"default": _sc(self.hass, load_cand)} if _sc(self.hass, load_cand) else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         )
+        schema_dict[vol.Optional(CONF_UNIT_LOAD_POWER, default=POWER_UNIT_AUTO)] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(value="auto", label="Auto (detectare automată din HA)"),
+                    selector.SelectOptionDict(value="w", label="Wați (W)"),
+                    selector.SelectOptionDict(value="kw", label="Kilowați (kW - multiplică x1000)"),
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+                translation_key="unit_power",
+            )
+        )
 
         # 1.1 House Consumption Energy Today (kWh, Optional)
         load_energy_cand = _auto_detect_candidate(
@@ -1202,6 +1219,17 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         schema_dict[vol.Optional(CONF_SENSOR_GRID_POWER, **({"default": _sc(self.hass, grid_pwr_cand)} if _sc(self.hass, grid_pwr_cand) else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_UNIT_GRID_POWER, default=POWER_UNIT_AUTO)] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(value="auto", label="Auto (detectare automată din HA)"),
+                    selector.SelectOptionDict(value="w", label="Wați (W)"),
+                    selector.SelectOptionDict(value="kw", label="Kilowați (kW - multiplică x1000)"),
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+                translation_key="unit_power",
+            )
         )
 
         # 1.3 Grid Energy Imported Today (kWh, Optional)
@@ -1701,6 +1729,17 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         schema_dict[vol.Optional(CONF_SENSOR_LOAD_POWER, **({"default": cur_load} if cur_load else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         )
+        schema_dict[vol.Optional(CONF_UNIT_LOAD_POWER, default=self._val(CONF_UNIT_LOAD_POWER, POWER_UNIT_AUTO))] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(value="auto", label="Auto (detectare automată din HA)"),
+                    selector.SelectOptionDict(value="w", label="Wați (W)"),
+                    selector.SelectOptionDict(value="kw", label="Kilowați (kW - multiplică x1000)"),
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+                translation_key="unit_power",
+            )
+        )
 
         cur_load_energy = self._val(CONF_SENSOR_LOAD_ENERGY_TODAY)
         schema_dict[vol.Optional(CONF_SENSOR_LOAD_ENERGY_TODAY, **({"default": cur_load_energy} if cur_load_energy else {}))] = selector.EntitySelector(
@@ -1710,6 +1749,17 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         cur_grid_pwr = self._val(CONF_SENSOR_GRID_POWER)
         schema_dict[vol.Optional(CONF_SENSOR_GRID_POWER, **({"default": cur_grid_pwr} if cur_grid_pwr else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_UNIT_GRID_POWER, default=self._val(CONF_UNIT_GRID_POWER, POWER_UNIT_AUTO))] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(value="auto", label="Auto (detectare automată din HA)"),
+                    selector.SelectOptionDict(value="w", label="Wați (W)"),
+                    selector.SelectOptionDict(value="kw", label="Kilowați (kW - multiplică x1000)"),
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+                translation_key="unit_power",
+            )
         )
 
         cur_grid_energy = self._val(CONF_SENSOR_GRID_ENERGY_TODAY)

@@ -1,7 +1,7 @@
 """Constants for the Solars Systems integration."""
 
 DOMAIN = "solars_systems"
-INTEGRATION_VERSION = "1.0.27"
+INTEGRATION_VERSION = "1.0.28"
 
 DEFAULT_API_URL = "https://api.solars-systems.eu/ha"
 DEFAULT_UPDATE_INTERVAL = 30  # seconds
@@ -62,3 +62,11 @@ HISTORY_RANGE_30_DAYS = "30_days"
 HISTORY_RANGE_90_DAYS = "90_days"
 HISTORY_RANGE_1_YEAR = "1_year"
 HISTORY_RANGE_ALL = "all"
+
+CONF_UNIT_LOAD_POWER = "unit_load_power"
+CONF_UNIT_GRID_POWER = "unit_grid_power"
+CONF_UNIT_PV_POWER = "unit_pv_power"
+
+POWER_UNIT_AUTO = "auto"
+POWER_UNIT_W = "w"
+POWER_UNIT_KW = "kw"

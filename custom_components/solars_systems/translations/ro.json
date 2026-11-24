@@ -124,7 +124,9 @@
           "history_range": "Interval istoric",
           "update_interval": "Interval trimitere date live (secunde)",
           "sensor_load_energy_today": "Energie Consum Casă Astăzi (kWh, Opțional)",
-          "sensor_grid_energy_today": "Energie Rețea Cumpărată Astăzi (kWh, Opțional)"
+          "sensor_grid_energy_today": "Energie Rețea Cumpărată Astăzi (kWh, Opțional)",
+          "unit_load_power": "Unitate Putere Consum Casă",
+          "unit_grid_power": "Unitate Putere Rețea (Grid)"
         }
       },
       "mppt_layout": {
@@ -509,7 +511,9 @@
           "sensor_ac_out_volt": "Tensiune Ieșire Invertor AC Out (V)",
           "update_interval": "Interval trimitere date live (secunde)",
           "sensor_load_energy_today": "Energie Consum Casă Astăzi (kWh, Opțional)",
-          "sensor_grid_energy_today": "Energie Rețea Cumpărată Astăzi (kWh, Opțional)"
+          "sensor_grid_energy_today": "Energie Rețea Cumpărată Astăzi (kWh, Opțional)",
+          "unit_load_power": "Unitate Putere Consum Casă",
+          "unit_grid_power": "Unitate Putere Rețea (Grid)"
         }
       },
       "mppt_layout": {

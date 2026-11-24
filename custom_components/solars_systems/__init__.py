@@ -39,6 +39,9 @@ from .const import (
     CONF_HP_FAULT,
     CONF_SENSOR_PV_POWER,
     CONF_SENSOR_LOAD_POWER,
+    CONF_UNIT_LOAD_POWER,
+    CONF_UNIT_GRID_POWER,
+    CONF_UNIT_PV_POWER,
     CONF_SENSOR_LOAD_ENERGY_TODAY,
     CONF_SENSOR_LOAD_ENERGY_MONTH,
     CONF_SENSOR_GRID_POWER,
@@ -102,16 +105,40 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if not state:
                 return None
             val = _safe_float(state.state)
-            if val is not None:
-                unit = state.attributes.get("unit_of_measurement", "")
-                if unit.lower() == "kw":
+            if val is None:
+                return None
+
+            unit = str(state.attributes.get("unit_of_measurement") or "").strip().lower()
+
+            # Verificare selectie utilizator pentru unitatea puterilor
+            unit_setting = "auto"
+            if key == CONF_SENSOR_LOAD_POWER:
+                unit_setting = data.get(CONF_UNIT_LOAD_POWER, "auto")
+            elif key == CONF_SENSOR_GRID_POWER:
+                unit_setting = data.get(CONF_UNIT_GRID_POWER, "auto")
+            elif key == CONF_SENSOR_PV_POWER:
+                unit_setting = data.get(CONF_UNIT_PV_POWER, "auto")
+
+            if key in (CONF_SENSOR_LOAD_POWER, CONF_SENSOR_GRID_POWER, CONF_SENSOR_PV_POWER):
+                if unit_setting == "kw":
                     val = round(val * 1000.0, 1)
-                elif unit.lower() == "wh":
-                    if key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_ENERGY_MONTH, CONF_SENSOR_ENERGY_YEAR, CONF_SENSOR_LOAD_ENERGY_TODAY, CONF_SENSOR_LOAD_ENERGY_MONTH, CONF_SENSOR_GRID_ENERGY_TODAY, CONF_SENSOR_GRID_ENERGY_MONTH):
-                        val = round(val / 1000.0, 3)
-                elif unit.lower() == "mwh":
-                    if key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_ENERGY_MONTH, CONF_SENSOR_ENERGY_YEAR, CONF_SENSOR_LOAD_ENERGY_TODAY, CONF_SENSOR_LOAD_ENERGY_MONTH, CONF_SENSOR_GRID_ENERGY_TODAY, CONF_SENSOR_GRID_ENERGY_MONTH):
-                        val = round(val * 1000.0, 3)
+                elif unit_setting == "w":
+                    val = round(val, 1)
+                else:  # auto
+                    if unit in ("kw", "kilowatt", "kilowatts"):
+                        val = round(val * 1000.0, 1)
+                    elif unit in ("w", "watt", "watts"):
+                        val = round(val, 1)
+                    elif 0.02 < abs(val) < 50.0 and (val % 1 != 0 or unit == ""):
+                        # Auto-detectie inteligenta: valoare mica zecimala (<50) trimisa fara unitate sau ca zecimala reprezinta kW
+                        val = round(val * 1000.0, 1)
+            elif unit == "wh":
+                if key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_ENERGY_MONTH, CONF_SENSOR_ENERGY_YEAR, CONF_SENSOR_LOAD_ENERGY_TODAY, CONF_SENSOR_LOAD_ENERGY_MONTH, CONF_SENSOR_GRID_ENERGY_TODAY, CONF_SENSOR_GRID_ENERGY_MONTH):
+                    val = round(val / 1000.0, 3)
+            elif unit == "mwh":
+                if key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_ENERGY_MONTH, CONF_SENSOR_ENERGY_YEAR, CONF_SENSOR_LOAD_ENERGY_TODAY, CONF_SENSOR_LOAD_ENERGY_MONTH, CONF_SENSOR_GRID_ENERGY_TODAY, CONF_SENSOR_GRID_ENERGY_MONTH):
+                    val = round(val * 1000.0, 3)
+
             # Failsafe: if daily energy value > 1000, it is sent in raw Wh (e.g. 209639 Wh)
             if val is not None and key in (CONF_SENSOR_ENERGY_TODAY, CONF_SENSOR_LOAD_ENERGY_TODAY, CONF_SENSOR_GRID_ENERGY_TODAY) and val > 1000:
                 val = round(val / 1000.0, 2)
