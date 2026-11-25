@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Conectare la Solars Systems",
-        "description": "Introduceți cheia API din contul dvs. de pe https://solars-systems.eu (Secțiunea Chei API).",
+        "description": "Introduceți cheia API din contul dvs. Solars Systems (Secțiunea Chei API).",
         "data": {
           "api_key": "Cheie API (API Key)"
         }

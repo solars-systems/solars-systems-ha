@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect to Solars Systems",
-        "description": "Enter your API key from your https://solars-systems.eu account (API Keys section).",
+        "description": "Enter your API key from your Solars Systems account (API Keys section).",
         "data": {
           "api_key": "API Key"
         }
