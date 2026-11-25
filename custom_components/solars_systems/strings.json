@@ -780,5 +780,12 @@
         "name": "Sync Now"
       }
     }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "cloud_connected": "Cloud connection established",
+      "cloud_disconnected": "Cloud connection lost or error",
+      "telemetry_sent": "Telemetry packet sent to Solars Systems"
+    }
   }
 }

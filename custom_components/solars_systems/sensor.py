@@ -20,7 +20,8 @@ except ImportError:
     except ImportError:
         EntityCategory = None
 
-from .const import DOMAIN, INTEGRATION_VERSION, CONF_INVERTER_ID, CONF_HAS_HEAT_PUMP
+from .const import DOMAIN
+from .device import SolarProDevice
 
 
 async def async_setup_entry(
@@ -30,20 +31,16 @@ async def async_setup_entry(
 ) -> None:
     """Set up Solars Systems sensor entities."""
     entry_data = hass.data[DOMAIN].get(entry.entry_id, {})
-    coordinator = entry_data.get("coordinator")
-    if not coordinator:
+    device: SolarProDevice | None = entry_data.get("device")
+    if not device:
         return
 
-    data = {**entry.data, **entry.options}
-    inverter_id = data[CONF_INVERTER_ID]
-    has_hp = bool(data.get(CONF_HAS_HEAT_PUMP))
-
     entities: list[SensorEntity] = [
-        SolarProCloudStatusSensor(coordinator, inverter_id, has_hp),
-        SolarProLastSyncSensor(coordinator, inverter_id, has_hp),
-        SolarProPacketsSentSensor(coordinator, inverter_id, has_hp),
-        SolarProApiLatencySensor(coordinator, inverter_id, has_hp),
-        SolarProTransmissionErrorsSensor(coordinator, inverter_id, has_hp),
+        SolarProCloudStatusSensor(device),
+        SolarProLastSyncSensor(device),
+        SolarProPacketsSentSensor(device),
+        SolarProApiLatencySensor(device),
+        SolarProTransmissionErrorsSensor(device),
     ]
 
     async_add_entities(entities)
@@ -55,34 +52,24 @@ class SolarProBaseSensor(SensorEntity):
     _attr_has_entity_name = True
     _attr_should_poll = False
 
-    def __init__(self, coordinator: Any, inverter_id: str, has_hp: bool, key: str) -> None:
+    def __init__(self, device: SolarProDevice, key: str) -> None:
         """Initialize base sensor."""
-        self.coordinator = coordinator
-        self._inverter_id = inverter_id
-        self._has_hp = has_hp
+        self.device = device
         self._key = key
-        self._attr_unique_id = f"{DOMAIN}_{inverter_id}_{key}"
+        self._attr_unique_id = f"{DOMAIN}_{device.inverter_id}_{key}"
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return Home Assistant device info."""
-        model_name = "SolarPro Gateway (PV + Pompa Caldura)" if self._has_hp else "SolarPro Cloud Gateway"
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._inverter_id)},
-            name=f"SolarPro Gateway ({self._inverter_id})",
-            manufacturer="Solars Systems",
-            model=model_name,
-            sw_version=INTEGRATION_VERSION,
-            configuration_url="https://solars-systems.eu",
-        )
+        return self.device.device_info
 
     async def async_added_to_hass(self) -> None:
-        """Register coordinator update callback."""
-        self.coordinator.register_listener(self.async_write_ha_state)
+        """Register device update callback."""
+        self.device.register_listener(self.async_write_ha_state)
 
     async def async_will_remove_from_hass(self) -> None:
-        """Unregister coordinator update callback."""
-        self.coordinator.unregister_listener(self.async_write_ha_state)
+        """Unregister device update callback."""
+        self.device.unregister_listener(self.async_write_ha_state)
 
 
 class SolarProCloudStatusSensor(SolarProBaseSensor):
@@ -93,18 +80,18 @@ class SolarProCloudStatusSensor(SolarProBaseSensor):
     if EntityCategory:
         _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, coordinator: Any, inverter_id: str, has_hp: bool) -> None:
-        super().__init__(coordinator, inverter_id, has_hp, "cloud_status")
+    def __init__(self, device: SolarProDevice) -> None:
+        super().__init__(device, "cloud_status")
 
     @property
     def native_value(self) -> str:
         """Return the current cloud connection status."""
-        return self.coordinator.status
+        return self.device.status
 
     @property
     def icon(self) -> str:
         """Dynamic icon depending on cloud connection status."""
-        if self.coordinator.status == "Conectat":
+        if self.device.status == "Conectat":
             return "mdi:cloud-check"
         return "mdi:cloud-alert"
 
@@ -120,13 +107,13 @@ class SolarProLastSyncSensor(SolarProBaseSensor):
     if EntityCategory:
         _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, coordinator: Any, inverter_id: str, has_hp: bool) -> None:
-        super().__init__(coordinator, inverter_id, has_hp, "last_sync")
+    def __init__(self, device: SolarProDevice) -> None:
+        super().__init__(device, "last_sync")
 
     @property
     def native_value(self) -> Any:
         """Return the timestamp of the last telemetry push."""
-        return self.coordinator.last_telemetry
+        return self.device.last_telemetry
 
 
 class SolarProPacketsSentSensor(SolarProBaseSensor):
@@ -141,13 +128,13 @@ class SolarProPacketsSentSensor(SolarProBaseSensor):
     if EntityCategory:
         _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, coordinator: Any, inverter_id: str, has_hp: bool) -> None:
-        super().__init__(coordinator, inverter_id, has_hp, "packets_sent")
+    def __init__(self, device: SolarProDevice) -> None:
+        super().__init__(device, "packets_sent")
 
     @property
     def native_value(self) -> int:
         """Return total packets count."""
-        return self.coordinator.telemetry_count
+        return self.device.telemetry_count
 
 
 class SolarProApiLatencySensor(SolarProBaseSensor):
@@ -162,13 +149,13 @@ class SolarProApiLatencySensor(SolarProBaseSensor):
     if EntityCategory:
         _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, coordinator: Any, inverter_id: str, has_hp: bool) -> None:
-        super().__init__(coordinator, inverter_id, has_hp, "api_latency")
+    def __init__(self, device: SolarProDevice) -> None:
+        super().__init__(device, "api_latency")
 
     @property
     def native_value(self) -> float | None:
         """Return the API latency in ms."""
-        return self.coordinator.api_latency
+        return self.device.api_latency
 
 
 class SolarProTransmissionErrorsSensor(SolarProBaseSensor):
@@ -183,10 +170,10 @@ class SolarProTransmissionErrorsSensor(SolarProBaseSensor):
     if EntityCategory:
         _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, coordinator: Any, inverter_id: str, has_hp: bool) -> None:
-        super().__init__(coordinator, inverter_id, has_hp, "transmission_errors")
+    def __init__(self, device: SolarProDevice) -> None:
+        super().__init__(device, "transmission_errors")
 
     @property
     def native_value(self) -> int:
         """Return total transmission errors."""
-        return self.coordinator.error_count
+        return self.device.error_count

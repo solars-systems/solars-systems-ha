@@ -13,6 +13,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
+from .device import SolarProDevice
 from .const import (
     DOMAIN,
     PLATFORMS,
@@ -79,39 +80,6 @@ def _safe_float(val: Any) -> float | None:
 
 
 
-class SolarProCoordinator:
-    """Manages telemetry pushing and tracks gateway diagnostic stats."""
-
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, inverter_id: str, api_key: str) -> None:
-        self.hass = hass
-        self.entry = entry
-        self.inverter_id = inverter_id
-        self.api_key = api_key
-        self.status: str = "Conectat"
-        self.last_telemetry: datetime | None = None
-        self.telemetry_count: int = 0
-        self.error_count: int = 0
-        self.api_latency: float | None = None
-        self.last_error: str | None = None
-        self._listeners: list[Any] = []
-        self.async_send_telemetry: Any = None
-
-    def register_listener(self, update_callback: Any) -> None:
-        if update_callback not in self._listeners:
-            self._listeners.append(update_callback)
-
-    def unregister_listener(self, update_callback: Any) -> None:
-        if update_callback in self._listeners:
-            self._listeners.remove(update_callback)
-
-    def notify_listeners(self) -> None:
-        for listener in list(self._listeners):
-            try:
-                listener()
-            except Exception as err:
-                _LOGGER.debug("Error notifying Solars Systems listener: %s", err)
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Solars Systems from a config entry."""
     data = {**entry.data, **entry.options}
@@ -127,7 +95,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "Accept": "application/json",
     }
 
-    coordinator = SolarProCoordinator(hass, entry, inverter_id, api_key)
+    device = SolarProDevice(hass, entry)
+    device.async_register()
 
     # 1. Periodic Telemetry Sender
     async def async_send_telemetry(now: datetime | None = None) -> None:
@@ -498,17 +467,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         latency_ms = round((time.monotonic() - t_start) * 1000.0, 1)
         if main_ok:
-            coordinator.status = "Conectat"
-            coordinator.last_telemetry = dt_util.now()
-            coordinator.telemetry_count += 1
-            coordinator.api_latency = latency_ms
-            coordinator.last_error = None
+            device.update_telemetry_success(latency_ms, dt_util.now())
         else:
-            coordinator.error_count += 1
-            coordinator.status = last_http_err or "Eroare Conexiune"
-            coordinator.last_error = last_http_err
-
-        coordinator.notify_listeners()
+            device.update_telemetry_error(last_http_err or "Eroare Conexiune")
 
     # 2. Historical Import Task
     async def async_run_history_import() -> None:
@@ -630,11 +591,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass, async_send_telemetry, timedelta(seconds=update_interval)
     )
 
-    coordinator.async_send_telemetry = async_send_telemetry
+    device.async_send_telemetry = async_send_telemetry
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
-        "coordinator": coordinator,
+        "device": device,
+        "coordinator": device,
         "cancel_timer": cancel_timer,
     }
 

@@ -784,5 +784,12 @@
         "name": "Sincronizează Acum"
       }
     }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "cloud_connected": "Conexiune Cloud stabilită",
+      "cloud_disconnected": "Conexiune Cloud pierdută sau eroare",
+      "telemetry_sent": "Pachet telemetrie trimis către Solars Systems"
+    }
   }
 }
