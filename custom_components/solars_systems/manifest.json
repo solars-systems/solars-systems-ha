@@ -12,5 +12,5 @@
   "integration_type": "hub",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/solars-systems/solars-systems-ha/issues",
-  "version": "1.0.30"
+  "version": "1.0.31"
 }

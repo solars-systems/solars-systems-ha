@@ -369,7 +369,8 @@
           "hp_comp_freq": "Frecvență Compresor (Hz)",
           "hp_status": "Mod / Stare Pompă (Entitate Climate sau Senzor)",
           "hp_defrost": "Dezghețare Activă (Defrost)",
-          "hp_fault": "Senzor Avarie / Cod Eroare"
+          "hp_fault": "Senzor Avarie / Cod Eroare",
+          "unit_hp_power": "Unitate Putere Electrică Pompă"
         }
       }
     },
@@ -756,7 +757,8 @@
           "hp_comp_freq": "Frecvență Compresor (Hz)",
           "hp_status": "Mod / Stare Pompă (Entitate Climate sau Senzor)",
           "hp_defrost": "Dezghețare Activă (Defrost)",
-          "hp_fault": "Senzor Avarie / Cod Eroare"
+          "hp_fault": "Senzor Avarie / Cod Eroare",
+          "unit_hp_power": "Unitate Putere Electrică Pompă"
         }
       }
     }

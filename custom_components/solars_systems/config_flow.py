@@ -50,6 +50,7 @@ from .const import (
     CONF_UNIT_LOAD_POWER,
     CONF_UNIT_GRID_POWER,
     CONF_UNIT_PV_POWER,
+    CONF_UNIT_HP_POWER,
     POWER_UNIT_AUTO,
     POWER_UNIT_W,
     POWER_UNIT_KW,
@@ -1086,6 +1087,17 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema_dict[vol.Optional(CONF_HP_POWER, **({"default": det["power"]} if det.get("power") else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         )
+        schema_dict[vol.Optional(CONF_UNIT_HP_POWER, default=POWER_UNIT_AUTO)] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(value="auto", label="Auto (detectare automată din HA)"),
+                    selector.SelectOptionDict(value="w", label="Wați (W)"),
+                    selector.SelectOptionDict(value="kw", label="Kilowați (kW - multiplică x1000)"),
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+                translation_key="unit_power",
+            )
+        )
         schema_dict[vol.Optional(CONF_HP_ENERGY, **({"default": det["energy"]} if det.get("energy") else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         )
@@ -1642,6 +1654,17 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
         cur_pwr = saved_pwr or det.get("power")
         schema_dict[vol.Optional(CONF_HP_POWER, **({"default": cur_pwr} if cur_pwr else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_UNIT_HP_POWER, default=self._val(CONF_UNIT_HP_POWER, POWER_UNIT_AUTO))] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(value="auto", label="Auto (detectare automată din HA)"),
+                    selector.SelectOptionDict(value="w", label="Wați (W)"),
+                    selector.SelectOptionDict(value="kw", label="Kilowați (kW - multiplică x1000)"),
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+                translation_key="unit_power",
+            )
         )
 
         cur_en = self._val(CONF_HP_ENERGY) or det.get("energy")

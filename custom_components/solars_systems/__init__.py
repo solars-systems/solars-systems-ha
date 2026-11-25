@@ -44,6 +44,7 @@ from .const import (
     CONF_UNIT_LOAD_POWER,
     CONF_UNIT_GRID_POWER,
     CONF_UNIT_PV_POWER,
+    CONF_UNIT_HP_POWER,
     CONF_SENSOR_LOAD_ENERGY_TODAY,
     CONF_SENSOR_LOAD_ENERGY_MONTH,
     CONF_SENSOR_GRID_POWER,
@@ -124,8 +125,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 unit_setting = data.get(CONF_UNIT_GRID_POWER, "auto")
             elif key == CONF_SENSOR_PV_POWER:
                 unit_setting = data.get(CONF_UNIT_PV_POWER, "auto")
+            elif key == CONF_HP_POWER:
+                unit_setting = data.get(CONF_UNIT_HP_POWER, "auto")
 
-            if key in (CONF_SENSOR_LOAD_POWER, CONF_SENSOR_GRID_POWER, CONF_SENSOR_PV_POWER):
+            if key in (CONF_SENSOR_LOAD_POWER, CONF_SENSOR_GRID_POWER, CONF_SENSOR_PV_POWER, CONF_HP_POWER):
                 if unit_setting == "kw":
                     val = round(val * 1000.0, 1)
                 elif unit_setting == "w":

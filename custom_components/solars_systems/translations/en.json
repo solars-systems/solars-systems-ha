@@ -369,7 +369,8 @@
           "hp_comp_freq": "Compressor Frequency (Hz)",
           "hp_status": "Status / Mode (Climate Entity or Sensor)",
           "hp_defrost": "Defrost Active (Binary Sensor)",
-          "hp_fault": "Fault / Error Sensor"
+          "hp_fault": "Fault / Error Sensor",
+          "unit_hp_power": "Heat Pump Electric Power Unit"
         }
       }
     },
@@ -756,7 +757,8 @@
           "hp_comp_freq": "Compressor Frequency (Hz)",
           "hp_status": "Status / Mode (Climate Entity or Sensor)",
           "hp_defrost": "Defrost Active (Binary Sensor)",
-          "hp_fault": "Fault / Error Sensor"
+          "hp_fault": "Fault / Error Sensor",
+          "unit_hp_power": "Heat Pump Electric Power Unit"
         }
       }
     }
