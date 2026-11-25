@@ -756,5 +756,29 @@
         }
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "cloud_status": {
+        "name": "Cloud Connection Status"
+      },
+      "last_sync": {
+        "name": "Last Sync"
+      },
+      "packets_sent": {
+        "name": "Telemetry Packets Sent"
+      },
+      "api_latency": {
+        "name": "Cloud Response Latency"
+      },
+      "errors_count": {
+        "name": "Cloud Transmission Errors"
+      }
+    },
+    "button": {
+      "sync_now": {
+        "name": "Sync Now"
+      }
+    }
   }
 }

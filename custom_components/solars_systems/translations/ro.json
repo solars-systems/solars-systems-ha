@@ -760,5 +760,29 @@
         }
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "cloud_status": {
+        "name": "Status Conexiune Cloud"
+      },
+      "last_sync": {
+        "name": "Ultima Sincronizare"
+      },
+      "packets_sent": {
+        "name": "Pachete Telemetrie Trimise"
+      },
+      "api_latency": {
+        "name": "Latență Răspuns Cloud"
+      },
+      "errors_count": {
+        "name": "Erori Transmisie Cloud"
+      }
+    },
+    "button": {
+      "sync_now": {
+        "name": "Sincronizează Acum"
+      }
+    }
   }
 }

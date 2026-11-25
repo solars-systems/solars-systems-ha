@@ -1,7 +1,8 @@
 """Constants for the Solars Systems integration."""
 
 DOMAIN = "solars_systems"
-INTEGRATION_VERSION = "1.0.28"
+PLATFORMS = ["sensor", "button"]
+INTEGRATION_VERSION = "1.0.29"
 
 DEFAULT_API_URL = "https://api.solars-systems.eu/ha"
 DEFAULT_UPDATE_INTERVAL = 30  # seconds

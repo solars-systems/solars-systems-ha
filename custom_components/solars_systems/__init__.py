@@ -15,6 +15,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
+    PLATFORMS,
     INTEGRATION_VERSION,
     DEFAULT_API_URL,
     CONF_API_KEY,
@@ -77,6 +78,40 @@ def _safe_float(val: Any) -> float | None:
         return None
 
 
+
+class SolarProCoordinator:
+    """Manages telemetry pushing and tracks gateway diagnostic stats."""
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, inverter_id: str, api_key: str) -> None:
+        self.hass = hass
+        self.entry = entry
+        self.inverter_id = inverter_id
+        self.api_key = api_key
+        self.status: str = "Conectat"
+        self.last_telemetry: datetime | None = None
+        self.telemetry_count: int = 0
+        self.error_count: int = 0
+        self.api_latency: float | None = None
+        self.last_error: str | None = None
+        self._listeners: list[Any] = []
+        self.async_send_telemetry: Any = None
+
+    def register_listener(self, update_callback: Any) -> None:
+        if update_callback not in self._listeners:
+            self._listeners.append(update_callback)
+
+    def unregister_listener(self, update_callback: Any) -> None:
+        if update_callback in self._listeners:
+            self._listeners.remove(update_callback)
+
+    def notify_listeners(self) -> None:
+        for listener in list(self._listeners):
+            try:
+                listener()
+            except Exception as err:
+                _LOGGER.debug("Error notifying Solars Systems listener: %s", err)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Solars Systems from a config entry."""
     data = {**entry.data, **entry.options}
@@ -91,6 +126,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
+
+    coordinator = SolarProCoordinator(hass, entry, inverter_id, api_key)
 
     # 1. Periodic Telemetry Sender
     async def async_send_telemetry(now: datetime | None = None) -> None:
@@ -401,8 +438,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if hp_payload:
                 hp_payload["valid"] = True
 
+        import time
+        t_start = time.monotonic()
+        main_ok = False
+        last_http_err = None
+
         # Send HTTP requests in parallel via asyncio.gather for ultra-fast, non-blocking execution
         async def _post_main_telemetry() -> None:
+            nonlocal main_ok, last_http_err
             try:
                 async with session.post(
                     f"{DEFAULT_API_URL}/telemetry",
@@ -410,9 +453,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     headers=headers,
                     timeout=10,
                 ) as resp:
-                    if resp.status != 200:
+                    if resp.status == 200:
+                        main_ok = True
+                    else:
+                        last_http_err = f"HTTP {resp.status}"
                         _LOGGER.warning("Solars Systems API returned status %s on telemetry", resp.status)
             except Exception as err:
+                last_http_err = str(err)
                 _LOGGER.debug("Error sending telemetry to Solars Systems: %s", err)
 
         async def _post_bms_telemetry() -> None:
@@ -448,6 +495,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             req_tasks.append(_post_hp_telemetry())
 
         await asyncio.gather(*req_tasks, return_exceptions=True)
+
+        latency_ms = round((time.monotonic() - t_start) * 1000.0, 1)
+        if main_ok:
+            coordinator.status = "Conectat"
+            coordinator.last_telemetry = dt_util.now()
+            coordinator.telemetry_count += 1
+            coordinator.api_latency = latency_ms
+            coordinator.last_error = None
+        else:
+            coordinator.error_count += 1
+            coordinator.status = last_http_err or "Eroare Conexiune"
+            coordinator.last_error = last_http_err
+
+        coordinator.notify_listeners()
 
     # 2. Historical Import Task
     async def async_run_history_import() -> None:
@@ -569,12 +630,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass, async_send_telemetry, timedelta(seconds=update_interval)
     )
 
+    coordinator.async_send_telemetry = async_send_telemetry
+
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
+        "coordinator": coordinator,
         "cancel_timer": cancel_timer,
     }
 
     entry.async_on_unload(entry.add_update_listener(update_listener))
+
+    if hasattr(hass.config_entries, "async_forward_entry_setups"):
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    else:
+        hass.config_entries.async_setup_platforms(entry, PLATFORMS)
 
     hass.async_create_task(async_send_telemetry())
 
@@ -591,8 +660,17 @@ async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    if hasattr(hass.config_entries, "async_unload_platforms"):
+        unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    else:
+        unload_ok = all(
+            await asyncio.gather(
+                *[hass.config_entries.async_forward_entry_unload(entry, platform) for platform in PLATFORMS]
+            )
+        )
+
     entry_data = hass.data[DOMAIN].pop(entry.entry_id, None)
     if entry_data and "cancel_timer" in entry_data:
         entry_data["cancel_timer"]()
 
-    return True
+    return unload_ok
