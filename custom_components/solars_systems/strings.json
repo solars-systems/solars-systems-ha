@@ -17,7 +17,8 @@
           "inverter_count": "Number of inverters",
           "has_battery": "System has battery storage?",
           "has_ha_bms": "I have BMS packs integrated into Home Assistant (JK, Daly, Seplos, Pylontech)",
-          "has_heat_pump": "I have a Heat Pump / HVAC integrated into Home Assistant"
+          "has_heat_pump": "I have a Heat Pump / HVAC integrated into Home Assistant",
+          "has_heat_pump_2": "I have a second Heat Pump / HVAC integrated into Home Assistant"
         }
       },
       "solar": {
@@ -368,7 +369,31 @@
           "hp_status": "Status / Mode (Climate Entity or Sensor)",
           "hp_defrost": "Defrost Active (Binary Sensor)",
           "hp_fault": "Fault / Error Sensor",
-          "unit_hp_power": "Heat Pump Electric Power Unit"
+          "unit_hp_power": "Heat Pump Electric Power Unit",
+          "hp_temp_room": "Room / Indoor Temperature (°C)",
+          "has_heat_pump_2": "Configure second Heat Pump / HVAC"
+        }
+      },
+      "heat_pump_2": {
+        "title": "Second Heat Pump Monitoring (Optional)",
+        "description": "Configure second heat pump sensors (power consumption, flow/return/DHW/room temperatures, flow rate, COP, status). Candidates are auto-detected:",
+        "data": {
+          "hp2_power": "Electric Power Consumption (W or kW)",
+          "hp2_energy": "Total Energy Consumed (kWh)",
+          "hp2_temp_flow": "Flow Water Temperature / Tur (°C)",
+          "hp2_temp_return": "Return Water Temperature / Retur (°C)",
+          "hp2_temp_dhw": "DHW / Hot Water Tank Temperature (°C)",
+          "hp2_temp_buffer": "Buffer Tank Temperature (°C)",
+          "hp2_temp_room": "Room / Indoor Temperature (°C)",
+          "hp2_temp_outdoor": "Outdoor / Ambient Temperature (°C)",
+          "hp2_flow_rate": "Water Flow Rate (L/min)",
+          "hp2_heat_power": "Thermal Heat Output (kW)",
+          "hp2_cop": "Coefficient of Performance (COP)",
+          "hp2_comp_freq": "Compressor Frequency (Hz)",
+          "hp2_status": "Status / Mode (Climate Entity or Sensor)",
+          "hp2_defrost": "Defrost Active (Binary Sensor)",
+          "hp2_fault": "Fault / Error Sensor",
+          "unit_hp2_power": "Heat Pump Electric Power Unit"
         }
       }
     },
@@ -405,7 +430,8 @@
           "inverter_count": "Number of inverters",
           "has_battery": "System has battery storage?",
           "has_ha_bms": "I have BMS packs integrated into Home Assistant (JK, Daly, Seplos, Pylontech)",
-          "has_heat_pump": "I have a Heat Pump / HVAC integrated into Home Assistant"
+          "has_heat_pump": "I have a Heat Pump / HVAC integrated into Home Assistant",
+          "has_heat_pump_2": "I have a second Heat Pump / HVAC integrated into Home Assistant"
         }
       },
       "solar": {
@@ -754,7 +780,31 @@
           "hp_status": "Status / Mode (Climate Entity or Sensor)",
           "hp_defrost": "Defrost Active (Binary Sensor)",
           "hp_fault": "Fault / Error Sensor",
-          "unit_hp_power": "Heat Pump Electric Power Unit"
+          "unit_hp_power": "Heat Pump Electric Power Unit",
+          "hp_temp_room": "Room / Indoor Temperature (°C)",
+          "has_heat_pump_2": "Configure second Heat Pump / HVAC"
+        }
+      },
+      "heat_pump_2": {
+        "title": "Second Heat Pump Monitoring (Optional)",
+        "description": "Configure second heat pump sensors (power consumption, flow/return/DHW/room temperatures, flow rate, COP, status). Candidates are auto-detected:",
+        "data": {
+          "hp2_power": "Electric Power Consumption (W or kW)",
+          "hp2_energy": "Total Energy Consumed (kWh)",
+          "hp2_temp_flow": "Flow Water Temperature / Tur (°C)",
+          "hp2_temp_return": "Return Water Temperature / Retur (°C)",
+          "hp2_temp_dhw": "DHW / Hot Water Tank Temperature (°C)",
+          "hp2_temp_buffer": "Buffer Tank Temperature (°C)",
+          "hp2_temp_room": "Room / Indoor Temperature (°C)",
+          "hp2_temp_outdoor": "Outdoor / Ambient Temperature (°C)",
+          "hp2_flow_rate": "Water Flow Rate (L/min)",
+          "hp2_heat_power": "Thermal Heat Output (kW)",
+          "hp2_cop": "Coefficient of Performance (COP)",
+          "hp2_comp_freq": "Compressor Frequency (Hz)",
+          "hp2_status": "Status / Mode (Climate Entity or Sensor)",
+          "hp2_defrost": "Defrost Active (Binary Sensor)",
+          "hp2_fault": "Fault / Error Sensor",
+          "unit_hp2_power": "Heat Pump Electric Power Unit"
         }
       }
     }

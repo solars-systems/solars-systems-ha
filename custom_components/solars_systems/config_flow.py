@@ -34,6 +34,7 @@ from .const import (
     CONF_HP_TEMP_RETURN,
     CONF_HP_TEMP_DHW,
     CONF_HP_TEMP_BUFFER,
+    CONF_HP_TEMP_ROOM,
     CONF_HP_TEMP_OUTDOOR,
     CONF_HP_FLOW_RATE,
     CONF_HP_HEAT_POWER,
@@ -42,6 +43,22 @@ from .const import (
     CONF_HP_STATUS,
     CONF_HP_DEFROST,
     CONF_HP_FAULT,
+    CONF_HAS_HEAT_PUMP_2,
+    CONF_HP2_POWER,
+    CONF_HP2_ENERGY,
+    CONF_HP2_TEMP_FLOW,
+    CONF_HP2_TEMP_RETURN,
+    CONF_HP2_TEMP_DHW,
+    CONF_HP2_TEMP_BUFFER,
+    CONF_HP2_TEMP_ROOM,
+    CONF_HP2_TEMP_OUTDOOR,
+    CONF_HP2_FLOW_RATE,
+    CONF_HP2_HEAT_POWER,
+    CONF_HP2_COP,
+    CONF_HP2_COMP_FREQ,
+    CONF_HP2_STATUS,
+    CONF_HP2_DEFROST,
+    CONF_HP2_FAULT,
     CONF_UPDATE_INTERVAL,
     CONF_SENSOR_PV_POWER,
     CONF_SENSOR_LOAD_POWER,
@@ -51,6 +68,7 @@ from .const import (
     CONF_UNIT_GRID_POWER,
     CONF_UNIT_PV_POWER,
     CONF_UNIT_HP_POWER,
+    CONF_UNIT_HP2_POWER,
     POWER_UNIT_AUTO,
     POWER_UNIT_W,
     POWER_UNIT_KW,
@@ -350,6 +368,7 @@ def _populate_heat_pump_from_base(hass, base_eid: str) -> dict[str, str]:
     res[CONF_HP_TEMP_RETURN] = match(sensor_cands, ["water_inlet", "inlet_t8", "inlet_t6", "return_temp", "temp_retur", "retur", "inlet"], exclude=["fan", "status", "switch"])
     res[CONF_HP_TEMP_DHW] = match(sensor_cands, ["water_tank", "tank_t5", "dhw", "boiler", "acm", "t5"], exclude=["fan", "status", "switch"])
     res[CONF_HP_TEMP_BUFFER] = match(sensor_cands, ["buffer", "puffer", "temp_buffer", "t6"], exclude=["fan", "status", "switch"])
+    res[CONF_HP_TEMP_ROOM] = match(sensor_cands, ["room_temp", "indoor_temp", "temp_camera", "camera", "temperatura_camera", "temp_room", "room_temperature", "indoor_temperature", "t1_room"], exclude=["fan", "status", "switch", "binary_sensor"])
     res[CONF_HP_TEMP_OUTDOOR] = match(sensor_cands, ["outdoor_temp", "ambient_temp", "temp_outdoor", "temp_ambient", "exterior_temp", "outdoor_temperature", "temp_t4", "t4", "sc_outdoor", "sc_ambient"], exclude=["fan", "ventilator", "status", "switch", "binary_sensor", "heater", "pump", "health"])
     res[CONF_HP_FLOW_RATE] = match(sensor_cands, ["water_flow", "flow_rate", "debit"], exclude=["health", "index"])
     res[CONF_HP_COMP_FREQ] = match(sensor_cands, ["compressor_freq", "comp_freq", "comp_hz", "frecventa_compresor", "compressor"], exclude=["target", "tracking", "health", "index"])
@@ -479,6 +498,7 @@ def _auto_detect_bms_pack(hass, p: int) -> dict[str, Any]:
 
     return results
 
+
 def _auto_detect_heat_pump(hass) -> dict[str, Any]:
     """Auto-detect heat pump sensors (power, energy, temps, debit, cop, state, faults)."""
     states = list(hass.states.async_all())
@@ -495,6 +515,7 @@ def _auto_detect_heat_pump(hass) -> dict[str, Any]:
                     "temp_return": pop.get(CONF_HP_TEMP_RETURN),
                     "temp_dhw": pop.get(CONF_HP_TEMP_DHW),
                     "temp_buffer": pop.get(CONF_HP_TEMP_BUFFER),
+                    "temp_room": pop.get(CONF_HP_TEMP_ROOM),
                     "temp_outdoor": pop.get(CONF_HP_TEMP_OUTDOOR),
                     "flow_rate": pop.get(CONF_HP_FLOW_RATE),
                     "heat_power": pop.get(CONF_HP_HEAT_POWER),
@@ -543,6 +564,7 @@ def _auto_detect_heat_pump(hass) -> dict[str, Any]:
     results["temp_return"] = find_hp_sensor("sensor", ("water_inlet", "inlet_temp", "return_temp", "retur_apa", "temp_retur", "entering_water", "water_inlet_t8"))
     results["temp_dhw"] = find_hp_sensor("sensor", ("water_tank", "tank_temp", "dhw_temp", "temp_dhw", "boiler_temp", "temp_boiler", "acm_temp", "temp_acm"))
     results["temp_buffer"] = find_hp_sensor("sensor", ("buffer_tank", "buffer_temp", "temp_buffer", "puffer_temp", "temp_puffer"))
+    results["temp_room"] = find_hp_sensor("sensor", ("room_temp", "indoor_temp", "temp_camera", "camera", "temperatura_camera", "temp_room", "room_temperature", "indoor_temperature"))
     results["temp_outdoor"] = find_hp_sensor("sensor", ("outdoor_temp", "temp_outdoor", "ambient_temp", "temp_ambient", "exterior_temp", "temp_exterior"))
     results["flow_rate"] = find_hp_sensor("sensor", ("flow_rate", "water_flow", "debit_apa", "debit"))
     results["heat_power"] = find_hp_sensor("sensor", ("thermal_power", "heat_power", "output_heat", "putere_termica", "putere_term"))
@@ -564,6 +586,87 @@ def _auto_detect_heat_pump(hass) -> dict[str, Any]:
 
     results["defrost"] = find_hp_sensor("binary_sensor", ("defrost", "dezghetare"))
     results["fault"] = find_hp_sensor("binary_sensor", ("fault", "error", "avarie")) or find_hp_sensor("sensor", ("fault_code", "error_code", "avarie"))
+
+    return results
+
+
+def _populate_heat_pump_2_from_base(hass, base_eid: str) -> dict[str, str]:
+    """Auto-populate heat pump 2 fields given a base entity."""
+    pop = _populate_heat_pump_from_base(hass, base_eid)
+    key_map = {
+        CONF_HP_POWER: CONF_HP2_POWER,
+        CONF_HP_ENERGY: CONF_HP2_ENERGY,
+        CONF_HP_TEMP_FLOW: CONF_HP2_TEMP_FLOW,
+        CONF_HP_TEMP_RETURN: CONF_HP2_TEMP_RETURN,
+        CONF_HP_TEMP_DHW: CONF_HP2_TEMP_DHW,
+        CONF_HP_TEMP_BUFFER: CONF_HP2_TEMP_BUFFER,
+        CONF_HP_TEMP_ROOM: CONF_HP2_TEMP_ROOM,
+        CONF_HP_TEMP_OUTDOOR: CONF_HP2_TEMP_OUTDOOR,
+        CONF_HP_FLOW_RATE: CONF_HP2_FLOW_RATE,
+        CONF_HP_HEAT_POWER: CONF_HP2_HEAT_POWER,
+        CONF_HP_COP: CONF_HP2_COP,
+        CONF_HP_COMP_FREQ: CONF_HP2_COMP_FREQ,
+        CONF_HP_STATUS: CONF_HP2_STATUS,
+        CONF_HP_DEFROST: CONF_HP2_DEFROST,
+        CONF_HP_FAULT: CONF_HP2_FAULT,
+    }
+    return {key_map[k]: v for k, v in pop.items() if k in key_map and v}
+
+
+def _auto_detect_heat_pump_2(hass) -> dict[str, Any]:
+    """Auto-detect second heat pump sensors."""
+    states = list(hass.states.async_all())
+    for s in states:
+        low = s.entity_id.lower()
+        if any(hp2_k in low for hp2_k in ("sunclima_2", "sunclima2", "heat_pump_2", "heatpump_2", "heat_pump2", "heatpump2", "pompa_caldura_2", "pompa2", "pompa_2", "altherma_2", "aquarea_2")):
+            pop = _populate_heat_pump_2_from_base(hass, s.entity_id)
+            if pop.get(CONF_HP2_TEMP_FLOW) or pop.get(CONF_HP2_POWER) or pop.get(CONF_HP2_TEMP_RETURN):
+                return {
+                    "power": pop.get(CONF_HP2_POWER),
+                    "energy": pop.get(CONF_HP2_ENERGY),
+                    "temp_flow": pop.get(CONF_HP2_TEMP_FLOW),
+                    "temp_return": pop.get(CONF_HP2_TEMP_RETURN),
+                    "temp_dhw": pop.get(CONF_HP2_TEMP_DHW),
+                    "temp_buffer": pop.get(CONF_HP2_TEMP_BUFFER),
+                    "temp_room": pop.get(CONF_HP2_TEMP_ROOM),
+                    "temp_outdoor": pop.get(CONF_HP2_TEMP_OUTDOOR),
+                    "flow_rate": pop.get(CONF_HP2_FLOW_RATE),
+                    "heat_power": pop.get(CONF_HP2_HEAT_POWER),
+                    "cop": pop.get(CONF_HP2_COP),
+                    "comp_freq": pop.get(CONF_HP2_COMP_FREQ),
+                    "status": pop.get(CONF_HP2_STATUS),
+                    "defrost": pop.get(CONF_HP2_DEFROST),
+                    "fault": pop.get(CONF_HP2_FAULT),
+                }
+
+    results: dict[str, Any] = {}
+    hp2_keywords = ("pompa_2", "pompa2", "heatpump2", "heat_pump_2", "heat_pump2", "zone_2", "zone2", "hp2", "hp_2")
+
+    def find_hp2_sensor(domain: str, keywords: tuple[str, ...], device_class: str | None = None) -> str | None:
+        for s in states:
+            eid = s.entity_id.lower()
+            if not eid.startswith(f"{domain}."):
+                continue
+            if any(hp_k in eid for hp_k in hp2_keywords):
+                if any(kw in eid for kw in keywords):
+                    return s.entity_id
+        return None
+
+    results["power"] = find_hp2_sensor("sensor", ("power", "putere", "active_power", "consum"), device_class="power")
+    results["energy"] = find_hp2_sensor("sensor", ("energy", "energie", "total_energy"), device_class="energy")
+    results["temp_flow"] = find_hp2_sensor("sensor", ("water_outlet", "outlet_temp", "flow_temp", "tur_apa", "temp_tur", "supply_temp", "leaving_water"))
+    results["temp_return"] = find_hp2_sensor("sensor", ("water_inlet", "inlet_temp", "return_temp", "retur_apa", "temp_retur", "entering_water"))
+    results["temp_dhw"] = find_hp2_sensor("sensor", ("water_tank", "tank_temp", "dhw_temp", "temp_dhw", "boiler_temp", "temp_boiler", "acm_temp"))
+    results["temp_buffer"] = find_hp2_sensor("sensor", ("buffer_tank", "buffer_temp", "temp_buffer", "puffer_temp", "temp_puffer"))
+    results["temp_room"] = find_hp2_sensor("sensor", ("room_temp", "indoor_temp", "temp_camera", "camera", "temperatura_camera", "temp_room"))
+    results["temp_outdoor"] = find_hp2_sensor("sensor", ("outdoor_temp", "temp_outdoor", "ambient_temp", "temp_ambient", "exterior_temp"))
+    results["flow_rate"] = find_hp2_sensor("sensor", ("flow_rate", "water_flow", "debit_apa", "debit"))
+    results["heat_power"] = find_hp2_sensor("sensor", ("thermal_power", "heat_power", "output_heat", "putere_termica"))
+    results["cop"] = find_hp2_sensor("sensor", ("cop", "instant_cop"))
+    results["comp_freq"] = find_hp2_sensor("sensor", ("compressor_freq", "comp_hz", "compresor_freq"))
+    results["status"] = find_hp2_sensor("climate", ("mode", "zone2", "zone_2")) or find_hp2_sensor("sensor", ("mode", "status", "stare"))
+    results["defrost"] = find_hp2_sensor("binary_sensor", ("defrost", "dezghetare"))
+    results["fault"] = find_hp2_sensor("binary_sensor", ("fault", "error", "avarie")) or find_hp2_sensor("sensor", ("fault_code", "error_code", "avarie"))
 
     return results
 
@@ -650,6 +753,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
             vol.Optional(CONF_HAS_HA_BMS, default=False): bool,
             vol.Optional(CONF_HAS_HEAT_PUMP, default=False): bool,
+            vol.Optional(CONF_HAS_HEAT_PUMP_2, default=False): bool,
             vol.Required(CONF_INVERTER_COUNT, default=1): vol.In({
                 1: "1 Invertor (Standard) / 1 Inverter",
                 2: "2 Invertoare în paralel / 2 Parallel Inverters",
@@ -708,6 +812,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_bms()
             if self._layout.get(CONF_HAS_HEAT_PUMP, False):
                 return await self.async_step_heat_pump()
+            if self._layout.get(CONF_HAS_HEAT_PUMP_2, False):
+                return await self.async_step_heat_pump_2()
             return await self.async_step_grid()
 
         schema_dict: dict[Any, Any] = {}
@@ -911,6 +1017,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_bms()
             if self._layout.get(CONF_HAS_HEAT_PUMP, False):
                 return await self.async_step_heat_pump()
+            if self._layout.get(CONF_HAS_HEAT_PUMP_2, False):
+                return await self.async_step_heat_pump_2()
             return await self.async_step_grid()
 
         schema_dict: dict[Any, Any] = {}
@@ -993,6 +1101,8 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_bms()
             if self._layout.get(CONF_HAS_HEAT_PUMP, False):
                 return await self.async_step_heat_pump()
+            if self._layout.get(CONF_HAS_HEAT_PUMP_2, False):
+                return await self.async_step_heat_pump_2()
             return await self.async_step_grid()
 
         # Auto-detect number of BMS packs if not yet customized (support up to 16 packs)
@@ -1078,6 +1188,9 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     if v and (user_changed_hp or not user_input.get(k)):
                         user_input[k] = v
             self._collected_data.update(user_input)
+            if user_input.get(CONF_HAS_HEAT_PUMP_2) or self._layout.get(CONF_HAS_HEAT_PUMP_2):
+                self._layout[CONF_HAS_HEAT_PUMP_2] = True
+                return await self.async_step_heat_pump_2()
             return await self.async_step_grid()
 
         det = _auto_detect_heat_pump(self.hass)
@@ -1113,6 +1226,9 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema_dict[vol.Optional(CONF_HP_TEMP_BUFFER, **({"default": det["temp_buffer"]} if det.get("temp_buffer") else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         )
+        schema_dict[vol.Optional(CONF_HP_TEMP_ROOM, **({"default": det["temp_room"]} if det.get("temp_room") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
         schema_dict[vol.Optional(CONF_HP_TEMP_OUTDOOR, **({"default": det["temp_outdoor"]} if det.get("temp_outdoor") else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         )
@@ -1137,9 +1253,96 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema_dict[vol.Optional(CONF_HP_FAULT, **({"default": det["fault"]} if det.get("fault") else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain=["binary_sensor", "sensor"])
         )
+        has_hp2_default = bool(self._collected_data.get(CONF_HAS_HEAT_PUMP_2, self._layout.get(CONF_HAS_HEAT_PUMP_2, False)))
+        schema_dict[vol.Optional(CONF_HAS_HEAT_PUMP_2, default=has_hp2_default)] = bool
 
         return self.async_show_form(
             step_id="heat_pump",
+            data_schema=vol.Schema(schema_dict),
+            errors=errors,
+        )
+
+    async def async_step_heat_pump_2(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Step 4d: Second Heat Pump & HVAC Configuration."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            ref_eid = user_input.get(CONF_HP2_TEMP_FLOW) or user_input.get(CONF_HP2_POWER)
+            init_ref = getattr(self, "_initial_hp2_ref", None)
+            user_changed_hp = bool(ref_eid and init_ref and ref_eid != init_ref)
+            if ref_eid:
+                hp2_pop = _populate_heat_pump_2_from_base(self.hass, ref_eid)
+                for k, v in hp2_pop.items():
+                    if v and (user_changed_hp or not user_input.get(k)):
+                        user_input[k] = v
+            self._collected_data.update(user_input)
+            return await self.async_step_grid()
+
+        det = _auto_detect_heat_pump_2(self.hass)
+        self._initial_hp2_ref = det.get("temp_flow") or det.get("power")
+        schema_dict: dict[Any, Any] = {}
+
+        schema_dict[vol.Optional(CONF_HP2_POWER, **({"default": det["power"]} if det.get("power") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_UNIT_HP2_POWER, default=POWER_UNIT_AUTO)] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(value="auto", label="Auto (detectare automată din HA)"),
+                    selector.SelectOptionDict(value="w", label="Wați (W)"),
+                    selector.SelectOptionDict(value="kw", label="Kilowați (kW - multiplică x1000)"),
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+                translation_key="unit_power",
+            )
+        )
+        schema_dict[vol.Optional(CONF_HP2_ENERGY, **({"default": det["energy"]} if det.get("energy") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_HP2_TEMP_FLOW, **({"default": det["temp_flow"]} if det.get("temp_flow") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_HP2_TEMP_RETURN, **({"default": det["temp_return"]} if det.get("temp_return") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_HP2_TEMP_DHW, **({"default": det["temp_dhw"]} if det.get("temp_dhw") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_HP2_TEMP_BUFFER, **({"default": det["temp_buffer"]} if det.get("temp_buffer") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_HP2_TEMP_ROOM, **({"default": det["temp_room"]} if det.get("temp_room") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_HP2_TEMP_OUTDOOR, **({"default": det["temp_outdoor"]} if det.get("temp_outdoor") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_HP2_FLOW_RATE, **({"default": det["flow_rate"]} if det.get("flow_rate") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_HP2_HEAT_POWER, **({"default": det["heat_power"]} if det.get("heat_power") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_HP2_COP, **({"default": det["cop"]} if det.get("cop") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_HP2_COMP_FREQ, **({"default": det["comp_freq"]} if det.get("comp_freq") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_HP2_STATUS, **({"default": det["status"]} if det.get("status") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["climate", "sensor", "switch", "select", "binary_sensor", "input_select", "input_boolean"])
+        )
+        schema_dict[vol.Optional(CONF_HP2_DEFROST, **({"default": det["defrost"]} if det.get("defrost") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["binary_sensor", "switch", "sensor"])
+        )
+        schema_dict[vol.Optional(CONF_HP2_FAULT, **({"default": det["fault"]} if det.get("fault") else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["binary_sensor", "sensor"])
+        )
+
+        return self.async_show_form(
+            step_id="heat_pump_2",
             data_schema=vol.Schema(schema_dict),
             errors=errors,
         )
@@ -1168,6 +1371,7 @@ class SolarsSystemsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_HAS_BATTERY: self._layout.get(CONF_HAS_BATTERY, True),
                 CONF_HAS_HA_BMS: self._layout.get(CONF_HAS_HA_BMS, False),
                 CONF_HAS_HEAT_PUMP: self._layout.get(CONF_HAS_HEAT_PUMP, False),
+                CONF_HAS_HEAT_PUMP_2: bool(self._layout.get(CONF_HAS_HEAT_PUMP_2, False) or self._collected_data.get(CONF_HAS_HEAT_PUMP_2, False)),
                 CONF_PRESET: self._layout.get(CONF_PRESET, PRESET_SOLAR_ASSISTANT),
                 **self._collected_data,
             }
@@ -1362,6 +1566,7 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Required(CONF_HAS_BATTERY, default=bool(self._val(CONF_HAS_BATTERY, True))): bool,
             vol.Optional(CONF_HAS_HA_BMS, default=bool(self._val(CONF_HAS_HA_BMS, False))): bool,
             vol.Optional(CONF_HAS_HEAT_PUMP, default=bool(self._val(CONF_HAS_HEAT_PUMP, False))): bool,
+            vol.Optional(CONF_HAS_HEAT_PUMP_2, default=bool(self._val(CONF_HAS_HEAT_PUMP_2, False))): bool,
         })
 
         return self.async_show_form(step_id="init", data_schema=schema)
@@ -1410,6 +1615,9 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
             has_hp = self._collected_data.get(CONF_HAS_HEAT_PUMP, self._val(CONF_HAS_HEAT_PUMP, False))
             if has_hp:
                 return await self.async_step_heat_pump()
+            has_hp2 = self._collected_data.get(CONF_HAS_HEAT_PUMP_2, self._val(CONF_HAS_HEAT_PUMP_2, False))
+            if has_hp2:
+                return await self.async_step_heat_pump_2()
             return await self.async_step_grid()
 
         inv_count = int(self._collected_data.get(CONF_INVERTER_COUNT, self._val(CONF_INVERTER_COUNT, 1)))
@@ -1494,6 +1702,11 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                 has_hp = self._val(CONF_HAS_HEAT_PUMP, False)
             if has_hp:
                 return await self.async_step_heat_pump()
+            has_hp2 = self._collected_data.get(CONF_HAS_HEAT_PUMP_2)
+            if has_hp2 is None:
+                has_hp2 = self._val(CONF_HAS_HEAT_PUMP_2, False)
+            if has_hp2:
+                return await self.async_step_heat_pump_2()
             return await self.async_step_grid()
 
         schema_dict: dict[Any, Any] = {}
@@ -1546,6 +1759,11 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                 has_hp = self._val(CONF_HAS_HEAT_PUMP, False)
             if has_hp:
                 return await self.async_step_heat_pump()
+            has_hp2 = self._collected_data.get(CONF_HAS_HEAT_PUMP_2)
+            if has_hp2 is None:
+                has_hp2 = self._val(CONF_HAS_HEAT_PUMP_2, False)
+            if has_hp2:
+                return await self.async_step_heat_pump_2()
             return await self.async_step_grid()
 
         # Auto-detect number of BMS packs if not yet customized (support up to 16 packs)
@@ -1638,6 +1856,8 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
                     if v and (user_changed_hp or not user_input.get(k)):
                         user_input[k] = v
             self._collected_data.update(user_input)
+            if user_input.get(CONF_HAS_HEAT_PUMP_2) or self._val(CONF_HAS_HEAT_PUMP_2):
+                return await self.async_step_heat_pump_2()
             return await self.async_step_grid()
 
         saved_flow = self._val(CONF_HP_TEMP_FLOW)
@@ -1692,6 +1912,11 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
             selector.EntitySelectorConfig(domain="sensor")
         )
 
+        cur_room = self._val(CONF_HP_TEMP_ROOM) or det.get("temp_room")
+        schema_dict[vol.Optional(CONF_HP_TEMP_ROOM, **({"default": cur_room} if cur_room else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
         cur_out = self._val(CONF_HP_TEMP_OUTDOOR) or det.get("temp_outdoor")
         schema_dict[vol.Optional(CONF_HP_TEMP_OUTDOOR, **({"default": cur_out} if cur_out else {}))] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
@@ -1732,8 +1957,129 @@ class SolarsSystemsOptionsFlowHandler(config_entries.OptionsFlow):
             selector.EntitySelectorConfig(domain=["binary_sensor", "sensor"])
         )
 
+        has_hp2_default = bool(self._collected_data.get(CONF_HAS_HEAT_PUMP_2, self._val(CONF_HAS_HEAT_PUMP_2, False)))
+        schema_dict[vol.Optional(CONF_HAS_HEAT_PUMP_2, default=has_hp2_default)] = bool
+
         return self.async_show_form(
             step_id="heat_pump",
+            data_schema=vol.Schema(schema_dict)
+        )
+
+    async def async_step_heat_pump_2(
+        self, user_input: dict[str, Any] | None = None
+    ) -> Any:
+        """Step 4d: Options for Second Heat Pump & HVAC."""
+        if user_input is not None:
+            ref_eid = user_input.get(CONF_HP2_TEMP_FLOW) or user_input.get(CONF_HP2_POWER)
+            init_ref = getattr(self, "_initial_hp2_ref", None)
+            user_changed_hp = bool(ref_eid and init_ref and ref_eid != init_ref)
+            if ref_eid:
+                hp2_pop = _populate_heat_pump_2_from_base(self.hass, ref_eid)
+                for k, v in hp2_pop.items():
+                    if v and (user_changed_hp or not user_input.get(k)):
+                        user_input[k] = v
+            self._collected_data.update(user_input)
+            return await self.async_step_grid()
+
+        saved_flow = self._val(CONF_HP2_TEMP_FLOW)
+        saved_pwr = self._val(CONF_HP2_POWER)
+        saved_ret = self._val(CONF_HP2_TEMP_RETURN)
+
+        det = {}
+        if not (saved_flow or saved_pwr or saved_ret):
+            det = _auto_detect_heat_pump_2(self.hass)
+        self._initial_hp2_ref = saved_flow or saved_pwr or det.get("temp_flow") or det.get("power")
+
+        schema_dict: dict[Any, Any] = {}
+
+        cur_pwr = saved_pwr or det.get("power")
+        schema_dict[vol.Optional(CONF_HP2_POWER, **({"default": cur_pwr} if cur_pwr else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+        schema_dict[vol.Optional(CONF_UNIT_HP2_POWER, default=self._val(CONF_UNIT_HP2_POWER, POWER_UNIT_AUTO))] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(value="auto", label="Auto (detectare automată din HA)"),
+                    selector.SelectOptionDict(value="w", label="Wați (W)"),
+                    selector.SelectOptionDict(value="kw", label="Kilowați (kW - multiplică x1000)"),
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+                translation_key="unit_power",
+            )
+        )
+
+        cur_en = self._val(CONF_HP2_ENERGY) or det.get("energy")
+        schema_dict[vol.Optional(CONF_HP2_ENERGY, **({"default": cur_en} if cur_en else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_flow = self._val(CONF_HP2_TEMP_FLOW) or det.get("temp_flow")
+        schema_dict[vol.Optional(CONF_HP2_TEMP_FLOW, **({"default": cur_flow} if cur_flow else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_ret = self._val(CONF_HP2_TEMP_RETURN) or det.get("temp_return")
+        schema_dict[vol.Optional(CONF_HP2_TEMP_RETURN, **({"default": cur_ret} if cur_ret else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_dhw = self._val(CONF_HP2_TEMP_DHW) or det.get("temp_dhw")
+        schema_dict[vol.Optional(CONF_HP2_TEMP_DHW, **({"default": cur_dhw} if cur_dhw else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_buf = self._val(CONF_HP2_TEMP_BUFFER) or det.get("temp_buffer")
+        schema_dict[vol.Optional(CONF_HP2_TEMP_BUFFER, **({"default": cur_buf} if cur_buf else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_room = self._val(CONF_HP2_TEMP_ROOM) or det.get("temp_room")
+        schema_dict[vol.Optional(CONF_HP2_TEMP_ROOM, **({"default": cur_room} if cur_room else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_out = self._val(CONF_HP2_TEMP_OUTDOOR) or det.get("temp_outdoor")
+        schema_dict[vol.Optional(CONF_HP2_TEMP_OUTDOOR, **({"default": cur_out} if cur_out else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_fr = self._val(CONF_HP2_FLOW_RATE) or det.get("flow_rate")
+        schema_dict[vol.Optional(CONF_HP2_FLOW_RATE, **({"default": cur_fr} if cur_fr else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_hp = self._val(CONF_HP2_HEAT_POWER) or det.get("heat_power")
+        schema_dict[vol.Optional(CONF_HP2_HEAT_POWER, **({"default": cur_hp} if cur_hp else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_cop = self._val(CONF_HP2_COP) or det.get("cop")
+        schema_dict[vol.Optional(CONF_HP2_COP, **({"default": cur_cop} if cur_cop else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_cf = self._val(CONF_HP2_COMP_FREQ) or det.get("comp_freq")
+        schema_dict[vol.Optional(CONF_HP2_COMP_FREQ, **({"default": cur_cf} if cur_cf else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        )
+
+        cur_st = self._val(CONF_HP2_STATUS) or det.get("status")
+        schema_dict[vol.Optional(CONF_HP2_STATUS, **({"default": cur_st} if cur_st else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["climate", "sensor", "switch", "select", "binary_sensor", "input_select", "input_boolean"])
+        )
+
+        cur_def = self._val(CONF_HP2_DEFROST) or det.get("defrost")
+        schema_dict[vol.Optional(CONF_HP2_DEFROST, **({"default": cur_def} if cur_def else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["binary_sensor", "switch", "sensor"])
+        )
+
+        cur_flt = self._val(CONF_HP2_FAULT) or det.get("fault")
+        schema_dict[vol.Optional(CONF_HP2_FAULT, **({"default": cur_flt} if cur_flt else {}))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["binary_sensor", "sensor"])
+        )
+
+        return self.async_show_form(
+            step_id="heat_pump_2",
             data_schema=vol.Schema(schema_dict)
         )
 

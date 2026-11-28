@@ -31,6 +31,7 @@ from .const import (
     CONF_HP_TEMP_RETURN,
     CONF_HP_TEMP_DHW,
     CONF_HP_TEMP_BUFFER,
+    CONF_HP_TEMP_ROOM,
     CONF_HP_TEMP_OUTDOOR,
     CONF_HP_FLOW_RATE,
     CONF_HP_HEAT_POWER,
@@ -39,12 +40,29 @@ from .const import (
     CONF_HP_STATUS,
     CONF_HP_DEFROST,
     CONF_HP_FAULT,
+    CONF_HAS_HEAT_PUMP_2,
+    CONF_HP2_POWER,
+    CONF_HP2_ENERGY,
+    CONF_HP2_TEMP_FLOW,
+    CONF_HP2_TEMP_RETURN,
+    CONF_HP2_TEMP_DHW,
+    CONF_HP2_TEMP_BUFFER,
+    CONF_HP2_TEMP_ROOM,
+    CONF_HP2_TEMP_OUTDOOR,
+    CONF_HP2_FLOW_RATE,
+    CONF_HP2_HEAT_POWER,
+    CONF_HP2_COP,
+    CONF_HP2_COMP_FREQ,
+    CONF_HP2_STATUS,
+    CONF_HP2_DEFROST,
+    CONF_HP2_FAULT,
     CONF_SENSOR_PV_POWER,
     CONF_SENSOR_LOAD_POWER,
     CONF_UNIT_LOAD_POWER,
     CONF_UNIT_GRID_POWER,
     CONF_UNIT_PV_POWER,
     CONF_UNIT_HP_POWER,
+    CONF_UNIT_HP2_POWER,
     CONF_SENSOR_LOAD_ENERGY_TODAY,
     CONF_SENSOR_LOAD_ENERGY_MONTH,
     CONF_SENSOR_GRID_POWER,
@@ -127,8 +145,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 unit_setting = data.get(CONF_UNIT_PV_POWER, "auto")
             elif key == CONF_HP_POWER:
                 unit_setting = data.get(CONF_UNIT_HP_POWER, "auto")
+            elif key == CONF_HP2_POWER:
+                unit_setting = data.get(CONF_UNIT_HP2_POWER, "auto")
 
-            if key in (CONF_SENSOR_LOAD_POWER, CONF_SENSOR_GRID_POWER, CONF_SENSOR_PV_POWER, CONF_HP_POWER):
+            if key in (CONF_SENSOR_LOAD_POWER, CONF_SENSOR_GRID_POWER, CONF_SENSOR_PV_POWER, CONF_HP_POWER, CONF_HP2_POWER):
                 if unit_setting == "kw":
                     val = round(val * 1000.0, 1)
                 elif unit_setting == "w":
@@ -363,6 +383,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if t_amb is not None:
                 hp_payload["temp_ambient"] = t_amb
 
+            t_room = get_val(CONF_HP_TEMP_ROOM)
+            if t_room is not None:
+                hp_payload["temp_camera"] = t_room
+                hp_payload["temp_room"] = t_room
+
             flow = get_val(CONF_HP_FLOW_RATE)
             if flow is not None:
                 hp_payload["debit"] = flow
@@ -410,6 +435,95 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if hp_payload:
                 hp_payload["valid"] = True
 
+        # Prepare Heat Pump 2 telemetry if configured
+        hp2_payload: dict[str, Any] = {}
+        if data.get(CONF_HAS_HEAT_PUMP_2):
+            hp2_pwr = get_val(CONF_HP2_POWER)
+            if hp2_pwr is not None:
+                hp2_payload["putere_el_w"] = hp2_pwr
+                hp2_payload["putere_el_kw"] = round(hp2_pwr / 1000.0, 2)
+                # Combine with puterePompa if present
+                if "puterePompa" in payload and payload["puterePompa"] is not None:
+                    payload["puterePompa"] = round(payload["puterePompa"] + hp2_pwr, 1)
+                else:
+                    payload["puterePompa"] = hp2_pwr
+
+            hp2_en = get_val(CONF_HP2_ENERGY)
+            if hp2_en is not None:
+                hp2_payload["energie_total_kwh"] = hp2_en
+
+            t2_tur = get_val(CONF_HP2_TEMP_FLOW)
+            if t2_tur is not None:
+                hp2_payload["temp_tur"] = t2_tur
+
+            t2_ret = get_val(CONF_HP2_TEMP_RETURN)
+            if t2_ret is not None:
+                hp2_payload["temp_retur"] = t2_ret
+
+            t2_dhw = get_val(CONF_HP2_TEMP_DHW)
+            if t2_dhw is not None:
+                hp2_payload["temp_boiler"] = t2_dhw
+
+            t2_buf = get_val(CONF_HP2_TEMP_BUFFER)
+            if t2_buf is not None:
+                hp2_payload["temp_puffer"] = t2_buf
+
+            t2_amb = get_val(CONF_HP2_TEMP_OUTDOOR)
+            if t2_amb is not None:
+                hp2_payload["temp_ambient"] = t2_amb
+
+            t2_room = get_val(CONF_HP2_TEMP_ROOM)
+            if t2_room is not None:
+                hp2_payload["temp_camera"] = t2_room
+                hp2_payload["temp_room"] = t2_room
+
+            flow2 = get_val(CONF_HP2_FLOW_RATE)
+            if flow2 is not None:
+                hp2_payload["debit"] = flow2
+
+            heat2_pwr = get_val(CONF_HP2_HEAT_POWER)
+            if heat2_pwr is not None:
+                hp2_payload["putere_term_kw"] = heat2_pwr
+            elif flow2 is not None and t2_tur is not None and t2_ret is not None and t2_tur > t2_ret:
+                hp2_payload["putere_term_kw"] = round(flow2 * 0.06973 * (t2_tur - t2_ret), 2)
+
+            cop2_val = get_val(CONF_HP2_COP)
+            if cop2_val is not None:
+                hp2_payload["cop"] = cop2_val
+            elif "putere_term_kw" in hp2_payload and hp2_pwr and hp2_pwr > 100:
+                hp2_payload["cop"] = round(hp2_payload["putere_term_kw"] / (hp2_pwr / 1000.0), 2)
+
+            comp2_hz = get_val(CONF_HP2_COMP_FREQ)
+            if comp2_hz is not None:
+                hp2_payload["comp_hz"] = int(comp2_hz)
+
+            st2_eid = data.get(CONF_HP2_STATUS)
+            if st2_eid:
+                st2_state = hass.states.get(st2_eid)
+                if st2_state and st2_state.state not in ("unknown", "unavailable", None):
+                    hp2_payload["stare"] = str(st2_state.state)
+                    action2 = st2_state.attributes.get("hvac_action")
+                    hp2_payload["mode"] = str(action2) if action2 else str(st2_state.state)
+
+            defrost2_val = get_bool_val(CONF_HP2_DEFROST)
+            if defrost2_val is not None:
+                hp2_payload["defrost"] = defrost2_val
+
+            fault2_val = get_bool_val(CONF_HP2_FAULT)
+            if fault2_val is not None:
+                hp2_payload["fault"] = fault2_val
+            else:
+                fault2_eid = data.get(CONF_HP2_FAULT)
+                if fault2_eid:
+                    f2_st = hass.states.get(fault2_eid)
+                    if f2_st and f2_st.state not in ("unknown", "unavailable", "0", "false", "off", "ok", "none", None):
+                        hp2_payload["fault"] = True
+                        hp2_payload["fault_code"] = str(f2_st.state)
+
+            if hp2_payload:
+                hp2_payload["valid"] = True
+                hp2_payload["pump_index"] = 2
+
         import time
         t_start = time.monotonic()
         main_ok = False
@@ -447,11 +561,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             except Exception as bms_err:
                 _LOGGER.debug("Error sending BMS telemetry to Solars Systems: %s", bms_err)
 
-        async def _post_hp_telemetry() -> None:
+        async def _post_hp_telemetry(payload_to_send: dict[str, Any], pump_index: int = 1) -> None:
             try:
                 async with session.post(
                     f"{DEFAULT_API_URL}/heatpump-telemetry",
-                    json={"macid": inverter_id, "integration_version": INTEGRATION_VERSION, "heat_pump": hp_payload},
+                    json={"macid": inverter_id, "integration_version": INTEGRATION_VERSION, "heat_pump": payload_to_send, **({"pump_index": pump_index} if pump_index > 1 else {})},
                     headers=headers,
                     timeout=10,
                 ) as hp_resp:
@@ -464,7 +578,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if bms_packs:
             req_tasks.append(_post_bms_telemetry())
         if hp_payload:
-            req_tasks.append(_post_hp_telemetry())
+            req_tasks.append(_post_hp_telemetry(hp_payload, 1))
+        if hp2_payload:
+            req_tasks.append(_post_hp_telemetry(hp2_payload, 2))
 
         await asyncio.gather(*req_tasks, return_exceptions=True)
 

@@ -17,7 +17,8 @@
           "inverter_count": "Număr de invertoare în locație",
           "has_battery": "Sistemul include baterie de stocare?",
           "has_ha_bms": "Am pachete BMS integrate în Home Assistant (JK, Daly, Seplos, Pylontech)",
-          "has_heat_pump": "Am Pompă de Căldură / HVAC integrat în Home Assistant"
+          "has_heat_pump": "Am Pompă de Căldură / HVAC integrat în Home Assistant",
+          "has_heat_pump_2": "Am și a doua pompă de căldură / HVAC integrată în Home Assistant"
         }
       },
       "solar": {
@@ -370,7 +371,31 @@
           "hp_status": "Mod / Stare Pompă (Entitate Climate sau Senzor)",
           "hp_defrost": "Dezghețare Activă (Defrost)",
           "hp_fault": "Senzor Avarie / Cod Eroare",
-          "unit_hp_power": "Unitate Putere Electrică Pompă"
+          "unit_hp_power": "Unitate Putere Electrică Pompă",
+          "hp_temp_room": "Temperatură Cameră / Interior (°C)",
+          "has_heat_pump_2": "Configurează și a 2-a pompă de căldură"
+        }
+      },
+      "heat_pump_2": {
+        "title": "Monitorizare Pompă de Căldură 2 (Opțional)",
+        "description": "Configurați senzorii celei de-a doua pompe de căldură (putere electrică consumată, temperaturi tur/retur/ACM/cameră, debit, COP, stare). Senzorii sunt detectați automat:",
+        "data": {
+          "hp2_power": "Putere Electrică Consumată (W sau kW)",
+          "hp2_energy": "Consum Total Energie (kWh)",
+          "hp2_temp_flow": "Temperatură Agent Termic Tur (°C)",
+          "hp2_temp_return": "Temperatură Agent Termic Retur (°C)",
+          "hp2_temp_dhw": "Temperatură Boiler Apă Caldă / ACM (°C)",
+          "hp2_temp_buffer": "Temperatură Puffer / Stocare Termică (°C)",
+          "hp2_temp_room": "Temperatură Cameră / Interior (°C)",
+          "hp2_temp_outdoor": "Temperatură Exterioară / Ambient (°C)",
+          "hp2_flow_rate": "Debit Apă (L/min)",
+          "hp2_heat_power": "Putere Termică Generată (kW)",
+          "hp2_cop": "Coeficient de Performanță (COP)",
+          "hp2_comp_freq": "Frecvență Compresor (Hz)",
+          "hp2_status": "Mod / Stare Pompă (Entitate Climate sau Senzor)",
+          "hp2_defrost": "Dezghețare Activă (Defrost)",
+          "hp2_fault": "Senzor Avarie / Cod Eroare",
+          "unit_hp2_power": "Unitate Putere Electrică Pompă 2"
         }
       }
     },
@@ -407,7 +432,8 @@
           "inverter_count": "Număr de invertoare în locație",
           "has_battery": "Sistemul include baterie de stocare?",
           "has_ha_bms": "Am pachete BMS integrate în Home Assistant (JK, Daly, Seplos, Pylontech)",
-          "has_heat_pump": "Am Pompă de Căldură / HVAC integrat în Home Assistant"
+          "has_heat_pump": "Am Pompă de Căldură / HVAC integrat în Home Assistant",
+          "has_heat_pump_2": "Am și a doua pompă de căldură / HVAC integrată în Home Assistant"
         }
       },
       "solar": {
@@ -758,7 +784,31 @@
           "hp_status": "Mod / Stare Pompă (Entitate Climate sau Senzor)",
           "hp_defrost": "Dezghețare Activă (Defrost)",
           "hp_fault": "Senzor Avarie / Cod Eroare",
-          "unit_hp_power": "Unitate Putere Electrică Pompă"
+          "unit_hp_power": "Unitate Putere Electrică Pompă",
+          "hp_temp_room": "Temperatură Cameră / Interior (°C)",
+          "has_heat_pump_2": "Configurează și a 2-a pompă de căldură"
+        }
+      },
+      "heat_pump_2": {
+        "title": "Monitorizare Pompă de Căldură 2 (Opțional)",
+        "description": "Configurați senzorii celei de-a doua pompe de căldură (putere electrică consumată, temperaturi tur/retur/ACM/cameră, debit, COP, stare). Senzorii sunt detectați automat:",
+        "data": {
+          "hp2_power": "Putere Electrică Consumată (W sau kW)",
+          "hp2_energy": "Consum Total Energie (kWh)",
+          "hp2_temp_flow": "Temperatură Agent Termic Tur (°C)",
+          "hp2_temp_return": "Temperatură Agent Termic Retur (°C)",
+          "hp2_temp_dhw": "Temperatură Boiler Apă Caldă / ACM (°C)",
+          "hp2_temp_buffer": "Temperatură Puffer / Stocare Termică (°C)",
+          "hp2_temp_room": "Temperatură Cameră / Interior (°C)",
+          "hp2_temp_outdoor": "Temperatură Exterioară / Ambient (°C)",
+          "hp2_flow_rate": "Debit Apă (L/min)",
+          "hp2_heat_power": "Putere Termică Generată (kW)",
+          "hp2_cop": "Coeficient de Performanță (COP)",
+          "hp2_comp_freq": "Frecvență Compresor (Hz)",
+          "hp2_status": "Mod / Stare Pompă (Entitate Climate sau Senzor)",
+          "hp2_defrost": "Dezghețare Activă (Defrost)",
+          "hp2_fault": "Senzor Avarie / Cod Eroare",
+          "unit_hp2_power": "Unitate Putere Electrică Pompă 2"
         }
       }
     }
